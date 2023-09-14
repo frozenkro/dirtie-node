@@ -6,6 +6,7 @@
 int main() {
   stdio_init_all();
 
+
   if (cyw43_arch_init_with_country(CYW43_COUNTRY_USA)) {
     printf("failed to initialize \n");
     return 1;
