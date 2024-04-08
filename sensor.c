@@ -25,8 +25,11 @@ int reg_read(i2c_inst_t *i2c,
     return 0;
   }
 
-  i2c_write_blocking(i2c, addr, &baseReg, 1, true);
-  i2c_write_blocking(i2c, addr, &funcReg, 1, true);
+  uint8_t regs[2] = { baseReg, funcReg };
+  i2c_write_blocking(i2c, addr, regs, 2, true);
+
+  //i2c_write_blocking(i2c, addr, &baseReg, 1, true);
+  //i2c_write_blocking(i2c, addr, &funcReg, 1, true);
   sleep_ms(1000);
   num_bytes_read = i2c_read_blocking(i2c, addr, buf, nbytes, false);
 
@@ -42,16 +45,22 @@ int test_sensor() {
   i2c_inst_t *i2c = i2c0;
 
   // buffer for storing reads
-  uint8_t data[6];
+  uint8_t data[4] = {0};
 
   // init I2C port @ 100 khz her adafruit seesaw recommendation
-  i2c_init(i2c, 10000);
+  i2c_init(i2c, 100 * 1000);
 
   gpio_set_function(sda_pin, GPIO_FUNC_I2C);
   gpio_set_function(scl_pin, GPIO_FUNC_I2C);
+  gpio_pull_up(sda_pin);
+  gpio_pull_up(scl_pin);
+
   
   int bytes_read;
   bytes_read = reg_read(i2c, ADAFRUIT_SENSOR_ADDR, REG_CAPACITANCE_BASE, REG_CAPACITANCE_FUNC, data, 4);
+
+  uint16_t capacitance = (uint16_t)data[0] << 8 | data[1];
+  uint16_t temp = (uint16_t)data[2] << 8 | data[3];
 
   DEBUG_printf("bytes read: %i", bytes_read);
 
