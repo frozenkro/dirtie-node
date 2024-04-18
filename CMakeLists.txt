@@ -30,6 +30,9 @@ target_include_directories(
 pico_enable_stdio_usb(${PROJECT_NAME} 0)
 pico_enable_stdio_uart(${PROJECT_NAME} 1)
 
+set(TEST_MODE 1)
+target_compile_definitions(${PROJECT_NAME} PRIVATE "TEST_MODE=${TEST_MODE}")
+
 if (DEFINED ENV{WIFI_SSID} AND (NOT WIFI_SSID))
   set(WIFI_SSID $ENV{WIFI_SSID})
   message("Using WIFI_SSID from environment ('${WIFI_SSID}')")
