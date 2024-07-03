@@ -27,6 +27,7 @@ target_link_libraries(${PROJECT_NAME}
   pico_lwip_mqtt
   hardware_i2c
   tinyusb_device
+  tinyusb_board
   )
 target_include_directories(
   ${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}  

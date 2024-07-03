@@ -1,4 +1,5 @@
 #include "connect.h"
+#include "dirtie_config.h"
 #include "lwip/apps/mqtt.h"
 #include "lwip/apps/mqtt_priv.h"
 #include "lwip/ip4_addr.h"
@@ -7,6 +8,7 @@
 #include "pico/stdio.h"
 #include "pico/time.h"
 #include "pico/types.h"
+#include "usb_cfg.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -190,9 +192,13 @@ int mqtt_run_test(MQTT_CLIENT_T *state) {
 
 int mqtt_test(char ssid[], char password[], char ip[]) {
   // put in station mode because we are making connections from device
+  if (!WIFI_CONFIGURED) {
+    printf("wifi credentials not yet configured\n");
+    return 1;
+  }
   cyw43_arch_enable_sta_mode();
 
-  printf("connecting to %s", ssid);
+  printf("connecting to %s\n", ssid);
   if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD,
                                          CYW43_AUTH_WPA2_AES_PSK, 30000)) {
     printf("failed to connect.\n");
