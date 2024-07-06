@@ -4,6 +4,7 @@
 int mqtt_init(char ssid[], char password[], char ip[]);
 int mqtt_check();
 
-int mqtt_test(char ssid[], char password[], char ip[]);
+int mqtt_test(char ssid[], char password[], char ip[],
+              int (*check_cancel_cb)());
 
 #endif

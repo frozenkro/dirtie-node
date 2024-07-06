@@ -16,6 +16,8 @@
 
 #define MQTT_PORT 1883
 
+int (*DEBUG_CHECK_CANCEL_CB)();
+
 typedef struct MQTT_CLIENT_T_ {
   ip_addr_t remote_addr;
   mqtt_client_t *mqtt_client;
@@ -184,18 +186,24 @@ int mqtt_run_test(MQTT_CLIENT_T *state) {
         }
       }
       sleep_ms(1000);
+      if (DEBUG_CHECK_CANCEL_CB && DEBUG_CHECK_CANCEL_CB()) {
+        return 0;
+      }
     }
   }
 
   return 0;
 }
 
-int mqtt_test(char ssid[], char password[], char ip[]) {
+int mqtt_test(char ssid[], char password[], char ip[],
+              int (*check_cancel_cb)()) {
   // put in station mode because we are making connections from device
   if (!WIFI_CONFIGURED) {
     printf("wifi credentials not yet configured\n");
     return 1;
   }
+  DEBUG_CHECK_CANCEL_CB = check_cancel_cb;
+
   cyw43_arch_enable_sta_mode();
 
   printf("connecting to %s\n", ssid);

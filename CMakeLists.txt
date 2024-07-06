@@ -26,7 +26,7 @@ target_link_libraries(${PROJECT_NAME}
   pico_stdlib
   pico_lwip_mqtt
   hardware_i2c
-  tinyusb_device
+  tinyusb_host
   tinyusb_board
   )
 target_include_directories(
