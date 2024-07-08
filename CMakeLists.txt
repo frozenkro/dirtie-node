@@ -19,6 +19,7 @@ add_executable(${PROJECT_NAME}
   test.h
   usb_cfg.c
   usb_cfg.h
+  dirtie_globals.h
   )
 pico_add_extra_outputs(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
@@ -33,7 +34,7 @@ target_include_directories(
   ${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}  
   )
 
-pico_enable_stdio_usb(${PROJECT_NAME} 1)
+# pico_enable_stdio_usb(${PROJECT_NAME} 1)
 pico_enable_stdio_uart(${PROJECT_NAME} 1)
 
 set(TEST_MODE 1)

@@ -1,5 +1,5 @@
 #include "connect.h"
-#include "dirtie_config.h"
+#include "dirtie_globals.h"
 #include "lwip/apps/mqtt.h"
 #include "lwip/apps/mqtt_priv.h"
 #include "lwip/ip4_addr.h"
@@ -8,13 +8,10 @@
 #include "pico/stdio.h"
 #include "pico/time.h"
 #include "pico/types.h"
-#include "usb_cfg.h"
 #include <stdio.h>
 #include <string.h>
 
 #define BUF_SIZE 2048
-
-#define MQTT_PORT 1883
 
 int (*DEBUG_CHECK_CANCEL_CB)();
 
@@ -158,21 +155,21 @@ int mqtt_run_test(MQTT_CLIENT_T *state) {
 
   if (mqtt_test_connect(state) == ERR_OK) {
     absolute_time_t timeout = nil_time;
-    bool subscribed = false;
+    int subscribed = 0;
     mqtt_set_inpub_callback(state->mqtt_client, mqtt_pub_start_cb,
                             mqtt_pub_data_cb, 0);
 
-    while (true) {
+    while (1) {
       cyw43_arch_poll();
       absolute_time_t now = get_absolute_time();
       if (is_nil_time(timeout) || absolute_time_diff_us(now, timeout) <= 0) {
         if (mqtt_client_is_connected(state->mqtt_client)) {
           cyw43_arch_lwip_begin();
 
-          if (!subscribed) {
+          if (subscribed == 0) {
             mqtt_sub_unsub(state->mqtt_client, "pico_w/recv", 0,
                            mqtt_sub_request_cb, 0, 1);
-            subscribed = true;
+            subscribed = 1;
           }
 
           if (mqtt_test_publish(state) == ERR_OK) {
@@ -198,7 +195,7 @@ int mqtt_run_test(MQTT_CLIENT_T *state) {
 int mqtt_test(char ssid[], char password[], char ip[],
               int (*check_cancel_cb)()) {
   // put in station mode because we are making connections from device
-  if (!WIFI_CONFIGURED) {
+  if (!wifi_configured) {
     printf("wifi credentials not yet configured\n");
     return 1;
   }

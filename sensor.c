@@ -28,9 +28,9 @@ int seesaw_reg_read(i2c_inst_t *i2c, const uint addr, const uint8_t baseReg,
   }
 
   uint8_t regs[] = {baseReg, funcReg};
-  i2c_write_blocking(i2c, addr, regs, 2, false);
+  i2c_write_blocking(i2c, addr, regs, 2, 0);
   sleep_ms(250);
-  num_bytes_read = i2c_read_blocking(i2c, addr, buf, nbytes, false);
+  num_bytes_read = i2c_read_blocking(i2c, addr, buf, nbytes, 0);
 
   return num_bytes_read;
 }

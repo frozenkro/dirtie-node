@@ -5,6 +5,7 @@
 #include "pico/time.h"
 #include "sensor.h"
 #include "test.h"
+#include "usb_cfg.h"
 #include <stdio.h>
 
 #ifndef TEST_MODE

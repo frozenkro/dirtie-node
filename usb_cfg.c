@@ -1,6 +1,6 @@
 #include "usb_cfg.h"
 #include "bsp/board.h"
-#include "dirtie_config.h"
+#include "dirtie_globals.h"
 #include "pico/stdlib.h"
 #include "tusb.h"
 #include <stdlib.h>
@@ -8,6 +8,10 @@
 
 #define MAX_SSID_LEN 32
 #define MAX_WPA2_PW_LEN 64
+
+int wifi_configured = 0;
+char *WIFI_SSID;
+char *WIFI_PASSWORD;
 
 int handle_command(const char *cmd) {
   if (strncmp(cmd, "SET_SSID", 8) == 0) {
@@ -24,6 +28,11 @@ int handle_command(const char *cmd) {
     printf("Unrecognized command %s\n", cmd);
     return 1;
   }
+
+  if (WIFI_SSID[0] != '\0' && WIFI_PASSWORD[0] != '\0') {
+    wifi_configured = 1;
+  }
+
   return 0;
 }
 

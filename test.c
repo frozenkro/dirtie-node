@@ -1,6 +1,6 @@
 #include "test.h"
 #include "connect.h"
-#include "dirtie_config.h"
+#include "dirtie_globals.h"
 #include "hardware/gpio.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
@@ -50,7 +50,7 @@ void test() {
 
   while (1) {
     if (!gpio_get(I2C_TEST_BTN_PIN)) {
-      gpio_put(I2C_TEST_LED_PIN, true);
+      gpio_put(I2C_TEST_LED_PIN, 1);
 
       printf("running i2c sensor test\n");
       if (sensor_test()) {
@@ -59,11 +59,11 @@ void test() {
 
       sleep_ms(500);
     } else {
-      gpio_put(I2C_TEST_LED_PIN, false);
+      gpio_put(I2C_TEST_LED_PIN, 0);
     }
 
     if (!gpio_get(USB_TEST_BTN_PIN)) {
-      gpio_put(USB_TEST_LED_PIN, true);
+      gpio_put(USB_TEST_LED_PIN, 1);
 
       printf("running usb cdc configuration test\n");
       if (!cfg_test(check_cancel_cb)) {
@@ -74,14 +74,14 @@ void test() {
 
       sleep_ms(500);
     } else {
-      gpio_put(USB_TEST_LED_PIN, false);
+      gpio_put(USB_TEST_LED_PIN, 0);
     }
 
     if (!gpio_get(MQTT_TEST_BTN_PIN)) {
-      gpio_put(MQTT_TEST_LED_PIN, true);
+      gpio_put(MQTT_TEST_LED_PIN, 1);
 
       printf("running MQTT connection test\n");
-      if (!WIFI_CONFIGURED) {
+      if (!wifi_configured) {
         printf("wifi has not yet been set up");
       } else if (mqtt_test(WIFI_SSID, WIFI_PASSWORD, MQTT_BROKER_IP,
                            check_cancel_cb)) {
@@ -90,7 +90,7 @@ void test() {
 
       sleep_ms(500);
     } else {
-      gpio_put(MQTT_TEST_LED_PIN, false);
+      gpio_put(MQTT_TEST_LED_PIN, 0);
     }
   }
 }
