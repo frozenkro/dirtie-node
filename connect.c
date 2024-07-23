@@ -228,3 +228,8 @@ int mqtt_test(char ssid[], char password[], char ip[],
 
   return 0;
 }
+
+int mqtt_init(char ssid[], char password[], char ip[]) {
+  // TODO
+  return 0;
+}

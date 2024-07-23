@@ -19,6 +19,11 @@ static const uint8_t REG_STATUS_TEMP_FUNC = 0x04;
 static const uint8_t REG_DEVICE_ID = 0x0;
 static const uint8_t REG_BME280 = 0x76;
 
+// Pins 
+static const uint SDA_PIN = 4;
+static const uint SCL_PIN = 5;
+i2c_inst_t *i2c;
+
 int seesaw_reg_read(i2c_inst_t *i2c, const uint addr, const uint8_t baseReg,
                     const uint8_t funcReg, uint8_t *buf, const uint8_t nbytes) {
   int num_bytes_read = 0;
@@ -52,19 +57,16 @@ uint16_t seesaw_read_16(i2c_inst_t *i2c, const uint addr, const uint8_t baseReg,
 
 int sensor_test() {
 
-  const uint sda_pin = 4;
-  const uint scl_pin = 5;
-
   // ports
-  i2c_inst_t *i2c = i2c0;
+  i2c = i2c0;
 
-  // init I2C port @ 100 khz her adafruit seesaw recommendation
+  // init I2C port @ 100 khz per adafruit seesaw recommendation
   i2c_init(i2c0, 100 * 1000);
 
-  gpio_set_function(sda_pin, GPIO_FUNC_I2C);
-  gpio_set_function(scl_pin, GPIO_FUNC_I2C);
-  gpio_pull_up(sda_pin);
-  gpio_pull_up(scl_pin);
+  gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);
+  gpio_set_function(SCL_PIN, GPIO_FUNC_I2C);
+  gpio_pull_up(SDA_PIN);
+  gpio_pull_up(SCL_PIN);
 
   uint16_t capacitance = seesaw_read_16(
       i2c, ADAFRUIT_SENSOR_ADDR, REG_CAPACITANCE_BASE, REG_CAPACITANCE_FUNC);
@@ -75,4 +77,22 @@ int sensor_test() {
   printf("temp: %hu\n", temp);
 
   return 0;
+}
+
+int sensor_init() {
+  i2c = i2c0;
+  
+  // init I2C port @ 100 khz per adafruit seesaw recommendation
+  i2c_init(i2c0, 100 * 1000);
+
+  gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);
+  gpio_set_function(SCL_PIN, GPIO_FUNC_I2C);
+  gpio_pull_up(SDA_PIN);
+  gpio_pull_up(SCL_PIN);
+
+  return 0;
+}
+
+int sensor_check(uint16_t *capacitance, uint16_t *temperature) {
+  
 }
