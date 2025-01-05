@@ -30,7 +30,7 @@ Dirtie is a microcontroller application designed to monitor plant soil condition
 ## Building
 
 - `cmake -B build -DPICO_BOARD=pico_w`
-- `cmake --install build`
+- `cmake --build build`
 
 Additional cmake Flags:
 - -DMQTT_BROKER_IP 
