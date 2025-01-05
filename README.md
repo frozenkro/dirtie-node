@@ -38,7 +38,7 @@ Additional cmake Flags:
 - -DCMAKE_EXPORT_COMPILE_COMMANDS 
   - Outputs compile_commands.json
 - -DCMAKE_BUILD_TYPE=Debug
-  - Includes debug symbols in output so application can be debugged with GDP/openocd/picoprobe
+  - Includes debug symbols in output so application can be debugged with gdb/openocd/picoprobe
 
 ## neovim lsp help
 
