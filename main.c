@@ -28,11 +28,16 @@ int init_offline_modules() {
 }
 
 int init_network_modules() {
+# ifndef MQTT_BROKER_IP
+  printf("No MQTT_BROKER_IP defined, no data will be published");
+# else 
+  
   if (mqtt_init(WIFI_SSID, WIFI_PASSWORD, MQTT_BROKER_IP)) {
     printf("error occured while initializing mqtt connection");
     return 1;
   }
   return 0;
+#endif
 }
 
 bool hourly_update(struct repeating_timer *t) {

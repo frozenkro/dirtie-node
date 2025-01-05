@@ -21,6 +21,7 @@ add_executable(${PROJECT_NAME}
   usb_cfg.h
   dirtie_globals.h
   usb_descriptors.c
+  host.c
   )
 pico_add_extra_outputs(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
@@ -63,4 +64,9 @@ if (DEFINED ENV{MQTT_BROKER_IP} AND (NOT MQTT_BROKER_IP))
 endif()
 if (MQTT_BROKER_IP)
   target_compile_definitions(${PROJECT_NAME} PRIVATE "MQTT_BROKER_IP=\"${MQTT_BROKER_IP}\"")
+else()
+  message(WARNING 
+    "MQTT_BROKER_IP NOT SPECIFIED.\n"
+    "This will prevent the device from publishing any data\n"
+    "Specify with -DMQTT_BROKER_IP\n")
 endif()

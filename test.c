@@ -81,6 +81,10 @@ void test() {
       gpio_put(MQTT_TEST_LED_PIN, 1);
 
       printf("running MQTT connection test\n");
+# ifndef MQTT_BROKER_IP
+      printf("MQTT_BROKER_IP has not been configured at compile time\n");
+      printf("Skipping MQTT connection test\n");
+# else
       if (!wifi_configured) {
         printf("wifi has not yet been set up");
       } else if (mqtt_test(WIFI_SSID, WIFI_PASSWORD, MQTT_BROKER_IP,
@@ -89,6 +93,7 @@ void test() {
       }
 
       sleep_ms(500);
+# endif
     } else {
       gpio_put(MQTT_TEST_LED_PIN, 0);
     }
