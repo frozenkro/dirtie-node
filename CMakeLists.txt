@@ -21,7 +21,9 @@ add_executable(${PROJECT_NAME}
   usb_cfg.h
   dirtie_globals.h
   usb_descriptors.c
-  host.c
+  access_point/dhcpserver.c
+  access_point/dhcpserver.h
+  access_point/host.c
   )
 pico_add_extra_outputs(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
