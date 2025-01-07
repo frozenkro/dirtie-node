@@ -1,4 +1,6 @@
 #include <cyw43_ll.h>
+#include <lwip/err.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include "pico/cyw43_arch.h"
@@ -8,11 +10,16 @@
 #include "lwip/tcp.h"
 
 #include "dhcpserver.h"
+#include "dt_globals.h"
+#include "access_point/host.h"
 
 #define TCP_PORT 80
 #define POLL_TIME_S 5
-#define HTTP_GET "GET"
+#define HTTP_POST "POST"
+#define WIFI_CREDENTIALS_ENDPOINT "/wifi-setup"
+#define MAX_CONTENT_LENGTH 1024
 
+int *HOSTING = 0;
 
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
@@ -70,6 +77,37 @@ static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
     return ERR_OK;
 }
 
+static bool parse_wifi_credentials(char *json) {
+  const char* ssid_query = "\"ssid\":\"";
+  int ssid_skip = strlen(ssid_query);
+  const char* ssid_start = strstr(json, ssid_query);
+
+  const char* pw_query = "\"password\":\"";
+  int pw_skip = strlen(pw_query);
+  const char* pw_start;
+  if (!ssid_start || !pw_start) {
+    return false;
+  }
+
+  ssid_start += ssid_skip;
+  pw_start += pw_skip;
+
+  const char* ssid_end = strchr(ssid_start, '"');
+  const char* pw_end = strchr(pw_start, '"');
+
+  if (!ssid_end || ssid_end - ssid_start > 64 || !pw_end || pw_end - pw_start > 64) {
+    return false;
+  }
+
+  memcpy(WIFI_SSID, ssid_start, ssid_end - ssid_start);
+  WIFI_SSID[ssid_end - ssid_start] = '\0';
+  memcpy(WIFI_PASSWORD, pw_start, pw_end - pw_start);
+  WIFI_PASSWORD[pw_end - pw_start] = '\0';
+
+  WIFI_CONFIGURED = 1;
+  return true;
+}
+
 err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
     if (!p) {
@@ -78,76 +116,49 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
     }
     assert(con_state && con_state->pcb == pcb);
     if (p->tot_len > 0) {
-        printf("tcp_server_recv %d err %d\n", p->tot_len, err);
-#if 0
-        for (struct pbuf *q = p; q != NULL; q = q->next) {
-            printf("in: %.*s\n", q->len, q->payload);
-        }
-#endif
         // Copy the request into the buffer
         pbuf_copy_partial(p, con_state->headers, p->tot_len > sizeof(con_state->headers) - 1 ? sizeof(con_state->headers) - 1 : p->tot_len, 0);
 
-        // Handle GET request
-        if (strncmp(HTTP_GET, con_state->headers, sizeof(HTTP_GET) - 1) == 0) {
-            char *request = con_state->headers + sizeof(HTTP_GET); // + space
-            char *params = strchr(request, '?');
-            if (params) {
-                if (*params) {
-                    char *space = strchr(request, ' ');
-                    *params++ = 0;
-                    if (space) {
-                        *space = 0;
+        // Handle POST request
+        if (strncmp(HTTP_POST, con_state->headers, sizeof(HTTP_POST) - 1) == 0) {
+            char *path = con_state->headers + sizeof(HTTP_POST); // skip "POST "
+            while (*path == ' ') path++; //skip all leading space
+                                         
+            if (strncmp(path, WIFI_CREDENTIALS_ENDPOINT, sizeof(WIFI_CREDENTIALS_ENDPOINT) - 1) == 0) {
+              // get the request body (json) start point - after two line breaks
+              char *json_start = strstr(con_state->headers, "\r\n\r\n");
+              if (json_start) {
+                  //skip rnrn
+                  json_start += 4;
+
+                  if (parse_wifi_credentials(json_start)) {
+                    const char* response = "HTTP/1.1 200 OK\r\n\r\n";
+
+                    err_t err = tcp_write(pcb, response, strlen(response), 0);
+
+                    if (!err) {
+                      err = ERR_OK;
                     }
-                } else {
-                    params = NULL;
-                }
-            }
-
-            // commenting out example implementation:
-            /*
-            // Generate content
-            con_state->result_len = test_server_content(request, params, con_state->result, sizeof(con_state->result));
-            printf("Request: %s?%s\n", request, params);
-            printf("Result: %d\n", con_state->result_len);
-
-            // Check we had enough buffer space
-            if (con_state->result_len > sizeof(con_state->result) - 1) {
-                printf("Too much result data %d\n", con_state->result_len);
-                return tcp_close_client_connection(con_state, pcb, ERR_CLSD);
-            }
-
-            // Generate web page
-            if (con_state->result_len > 0) {
-                con_state->header_len = snprintf(con_state->headers, sizeof(con_state->headers), HTTP_RESPONSE_HEADERS,
-                    200, con_state->result_len);
-                if (con_state->header_len > sizeof(con_state->headers) - 1) {
-                    printf("Too much header data %d\n", con_state->header_len);
-                    return tcp_close_client_connection(con_state, pcb, ERR_CLSD);
-                }
-            } else {
-                // Send redirect
-                con_state->header_len = snprintf(con_state->headers, sizeof(con_state->headers), HTTP_RESPONSE_REDIRECT,
-                    ipaddr_ntoa(con_state->gw));
-                printf("Sending redirect %s", con_state->headers);
-            }
-
-            // Send the headers to the client
-            con_state->sent_len = 0;
-            err_t err = tcp_write(pcb, con_state->headers, con_state->header_len, 0);
-            if (err != ERR_OK) {
-                printf("failed to write header data %d\n", err);
-                return tcp_close_client_connection(con_state, pcb, err);
-            }
-
-            // Send the body to the client
-            if (con_state->result_len) {
-                err = tcp_write(pcb, con_state->result, con_state->result_len, 0);
-                if (err != ERR_OK) {
-                    printf("failed to write result data %d\n", err);
                     return tcp_close_client_connection(con_state, pcb, err);
-                }
+                  } else {
+                    const char *body = "{\"error\":\"invalid_format\"}";
+                    int body_len = strlen(body);
+
+                    char response[256];
+                    snprintf(response, sizeof(response),
+                      "HTTP/1.1 400 Bad Request\nContent-Length: %d\nContent-Type: application/json\r\n\r\n%s",
+                      body_len, body);
+                    err_t err = tcp_write(pcb, response, strlen(response), 0);
+
+                    if (!err) {
+                      err = ERR_OK;
+                    }
+                    return tcp_close_client_connection(con_state, pcb, err);
+                  }
+              }
+
             }
-            */
+
         }
         tcp_recved(pcb, p->tot_len);
     }

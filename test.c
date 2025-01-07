@@ -1,12 +1,11 @@
 #include "test.h"
-#include "connect.h"
-#include "dirtie_globals.h"
+#include "connect/connect.h"
+#include "dt_globals.h"
 #include "hardware/gpio.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
-#include "sensor.h"
-#include "usb_cfg.h"
+#include "sensor/sensor.h"
 #include <stdio.h>
 
 #define MQTT_TEST_BTN_PIN 14
@@ -65,12 +64,13 @@ void test() {
     if (!gpio_get(USB_TEST_BTN_PIN)) {
       gpio_put(USB_TEST_LED_PIN, 1);
 
-      printf("running usb cdc configuration test\n");
-      if (!cfg_test(check_cancel_cb)) {
-        printf("script failed during USB config test.\n");
-      } else {
-        printf("USB config test exited");
-      }
+      // replace the usb config stuff with wifi test or memory test
+      /* printf("running usb cdc configuration test\n"); */
+      /* if (!cfg_test(check_cancel_cb)) { */
+      /*   printf("script failed during USB config test.\n"); */
+      /* } else { */
+      /*   printf("USB config test exited"); */
+      /* } */
 
       sleep_ms(500);
     } else {

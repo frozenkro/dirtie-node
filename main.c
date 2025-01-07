@@ -1,17 +1,19 @@
-#include "connect.h"
-#include "dirtie_globals.h"
+#include "connect/connect.h"
+#include "dt_globals.h"
 #include "hardware/gpio.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
-#include "sensor.h"
+#include "sensor/sensor.h"
 #include "test.h"
-#include "usb_cfg.h"
 #include <stdio.h>
 
 #ifndef TEST_MODE
 #define TEST_MODE 0
 #endif
+
+char* WIFI_SSID;
+char* WIFI_PASSWORD;
 
 struct loop_state {
   uint16_t last_published_capacitance;
@@ -23,13 +25,13 @@ int init_offline_modules() {
     printf("error occurred while initializing i2c sensor module");
     return 1;
   }
-  cfg_init();
   return 0;
 }
 
 int init_network_modules() {
 # ifndef MQTT_BROKER_IP
   printf("No MQTT_BROKER_IP defined, no data will be published");
+  return 0;
 # else 
   
   if (mqtt_init(WIFI_SSID, WIFI_PASSWORD, MQTT_BROKER_IP)) {
@@ -73,9 +75,6 @@ int main() {
   // Await WIFI configuration over usb
   // TODO store to persistent storage and skip this 
   while (1) {
-    if (cfg_check()) {
-      return 1;
-    }
     if (WIFI_SSID[0] != '\0' && WIFI_PASSWORD[0] != '\0') {
       break;
     }

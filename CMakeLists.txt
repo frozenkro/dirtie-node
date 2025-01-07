@@ -11,19 +11,21 @@ pico_sdk_init()
 
 add_executable(${PROJECT_NAME}
   main.c
-  connect.c
-  connect.h
-  sensor.c
-  sensor.h
+  connect/connect.c
+  connect/connect.h
+  sensor/sensor.c
+  sensor/sensor.h
   test.c
   test.h
-  usb_cfg.c
-  usb_cfg.h
-  dirtie_globals.h
-  usb_descriptors.c
+  dt_globals.h
   access_point/dhcpserver.c
   access_point/dhcpserver.h
   access_point/host.c
+  access_point/host.h
+  flashmem/flashmem.c
+  flashmem/flashmem.h
+  json/json.c
+  json/json.h
   )
 pico_add_extra_outputs(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}

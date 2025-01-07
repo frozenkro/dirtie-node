@@ -1,5 +1,5 @@
 #include "connect.h"
-#include "dirtie_globals.h"
+#include "dt_globals.h"
 #include "lwip/apps/mqtt.h"
 #include "lwip/apps/mqtt_priv.h"
 #include "lwip/ip4_addr.h"
@@ -195,7 +195,7 @@ int mqtt_run_test(MQTT_CLIENT_T *state) {
 int mqtt_test(char ssid[], char password[], char ip[],
               int (*check_cancel_cb)()) {
   // put in station mode because we are making connections from device
-  if (!wifi_configured) {
+  if (!WIFI_CONFIGURED) {
     printf("wifi credentials not yet configured\n");
     return 1;
   }
