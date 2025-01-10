@@ -3,6 +3,7 @@
 
 typedef enum JsonErr {
   ERR_OK = 1,
+  ERR_SYN,
   ERR_KEYMISSING
 } JSON_ERR_T_;
 
@@ -38,6 +39,11 @@ typedef struct JsonVal {
         JSON_KEY_VAL_T_* object;
     } value;
 } JSON_VAL_T_;
+
+typedef struct JsonResult {
+  JSON_ERR_T_ err;
+  JSON_VAL_T_ *val;
+} JSON_RESULT_T_;
 
 int write(char *json, char *key, char *val);
 int read(char *json, char *key, char *out_val);
