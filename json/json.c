@@ -22,7 +22,14 @@ JSON_RESULT_T_ walk_key_val(PARSING_STATE_T_ *state);
 JSON_RESULT_T_ walk_arr(PARSING_STATE_T_ *state);
 JSON_RESULT_T_ walk_str(PARSING_STATE_T_ *state);
 JSON_RESULT_T_ walk_keyword(PARSING_STATE_T_ *state);
-const walk_callback WALK_VAL_CALLBACKS[4 * sizeof(walk_callback)] = { walk_key_val, walk_arr, walk_str, walk_keyword };
+JSON_RESULT_T_ walk_value(PARSING_STATE_T_ *state);//not included in cb list 
+const walk_callback WALK_VAL_CALLBACKS
+[4 * sizeof(walk_callback)] = { 
+  walk_key_val, 
+  walk_arr, 
+  walk_str, 
+  walk_keyword 
+};
 
 JSON_RESULT_T_ err_next() {
   return (JSON_RESULT_T_){ ERR_NEXT, NULL };
@@ -50,7 +57,46 @@ JSON_RESULT_T_ walk_arr(PARSING_STATE_T_ *state) {
   if (*state-> cursor != '[') {
     return err_next();
   }
+  state->cursor++;
 
+  JSON_TYPE_T_ *type = NULL;
+  JSON_ARRAY_T_ *prv = NULL;
+  while (1) {
+    next_ch(state);
+    if (*state->cursor == ']') {
+      JSON_VAL_T_ *res = malloc(sizeof(JSON_VAL_T_));
+      res->type = JSON_ARRAY;
+      res->value.array = prv;
+      return (JSON_RESULT_T_){ ERR_OK, res };
+    } else if (*state->cursor != ',') {
+      if (prv != NULL) {
+        return err_syn();
+      }
+    } else {
+      state->cursor++;
+      next_ch(state);
+    }
+
+    JSON_RESULT_T_ val_res = walk_value(state);
+    if (val_res.err != ERR_OK) {
+      return val_res;
+    }
+    
+    if (*type != val_res.val->type) {
+      if (type == NULL) {
+        *type = val_res.val->type;
+      }
+      else {
+        return (JSON_RESULT_T_){ ERR_ARRTYPE, NULL };
+      }
+    }
+
+    JSON_ARRAY_T_ *item = malloc(sizeof(JSON_ARRAY_T_));
+    item->value = val_res.val;
+    if (prv != NULL) {
+      prv->next = item;
+    }
+  }
   
 }
 

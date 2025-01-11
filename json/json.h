@@ -7,6 +7,7 @@ typedef enum JsonErr {
   ERR_SYN,
   ERR_STRLEN,
   ERR_STRCHR,
+  ERR_ARRTYPE,
   ERR_KEYMISSING
 } JSON_ERR_T_;
 
@@ -29,7 +30,7 @@ typedef struct JsonKeyVal {
 
 typedef struct JsonArray {
     JSON_VAL_T_* value;
-    struct JSON_ARRAY_T_* next;
+    struct JsonArray* next;
 } JSON_ARRAY_T_;
 
 typedef struct JsonVal {
