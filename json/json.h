@@ -3,7 +3,10 @@
 
 typedef enum JsonErr {
   ERR_OK = 1,
+  ERR_NEXT,
   ERR_SYN,
+  ERR_STRLEN,
+  ERR_STRCHR,
   ERR_KEYMISSING
 } JSON_ERR_T_;
 
