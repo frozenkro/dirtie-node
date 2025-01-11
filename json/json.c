@@ -1,5 +1,4 @@
 #include "json/json.h"
-#include <cstdio>
 #include <stdio.h>
 #include <string.h>
 
@@ -11,6 +10,11 @@ typedef struct parsing_state {
   char *cursor;
   JSON_ERR_T_ err;
 } PARSING_STATE_T_;
+
+typedef struct JsonResult {
+  JSON_ERR_T_ err;
+  JSON_VAL_T_ *val;
+} JSON_RESULT_T_;
 
 typedef JSON_RESULT_T_ (*walk_callback)(PARSING_STATE_T_*);
 JSON_RESULT_T_ walk_key_val(PARSING_STATE_T_ *state);

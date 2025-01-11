@@ -40,10 +40,6 @@ typedef struct JsonVal {
     } value;
 } JSON_VAL_T_;
 
-typedef struct JsonResult {
-  JSON_ERR_T_ err;
-  JSON_VAL_T_ *val;
-} JSON_RESULT_T_;
 
 int write(char *json, char *key, char *val);
 int read(char *json, char *key, char *out_val);
