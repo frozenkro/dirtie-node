@@ -100,6 +100,14 @@ JSON_RESULT_T_ walk_key_val(PARSING_STATE_T_ *state) {
       return (JSON_RESULT_T_){ ERR_OK, value };
     }
 
+    if ((*state->cursor == ',' && prv == NULL) 
+        || (*state->cursor != ',' && prv != NULL)) {
+      return err_syn();
+    } else {
+      state->cursor++;
+      next_ch(state);
+    }
+
     if (*state->cursor != '"') {
       return err_syn();
     }
@@ -168,11 +176,13 @@ JSON_RESULT_T_ walk_arr(PARSING_STATE_T_ *state) {
       res->type = JSON_ARRAY;
       res->value.array = prv;
       return (JSON_RESULT_T_){ ERR_OK, res };
-    } else if (*state->cursor != ',') {
-      if (prv != NULL) {
-        return err_syn();
-      }
-    } else {
+    } 
+
+    if ((*state->cursor == ',' && prv == NULL) 
+        || (*state->cursor != ',' && prv != NULL)) {
+      return err_syn();
+    } 
+    else {
       state->cursor++;
       next_ch(state);
     }
