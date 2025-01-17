@@ -1,7 +1,9 @@
 #include "json/json.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 const char *JSON_TRUE_S = "true";
 const char *JSON_FALSE_S = "false";
@@ -47,11 +49,108 @@ void next_ch(PARSING_STATE_T_ *state) {
   while (*state->cursor == ' ' || *state->cursor == '\n') state->cursor++;
 }
 
+int str_eq(char* str1, char* str2, int limit) {
+  int length = 0;
+  while (str1 != NULL) {
+    if (str2 == NULL || str1++ != str2++) {
+      return 0;
+    }
+    if (++length == limit) {
+      return 2;
+    }
+  }
+  if (str2 == NULL) {
+    return 1;
+  } else { 
+    return 0;
+  }
+}
+
+int key_exists(char *key, JSON_KEY_VAL_T_ *head, JSON_ERR_T_ *err) {
+  while (head->next != NULL) {
+    int str_eq_res = str_eq(key, head->key, 255);
+    if (str_eq_res == 1) {
+      return 1;
+    }
+    if (str_eq_res == 2) {
+      *err = ERR_KEYLEN; 
+      return 0;
+    }
+    head = head->next;
+  }
+  return 0;
+}
+
+
 JSON_RESULT_T_ walk_key_val(PARSING_STATE_T_ *state) {
   if (*state->cursor != '{') {
     return err_next();
   }
+  state->cursor++;
+
+  JSON_KEY_VAL_T_ *prv = NULL;
+  JSON_KEY_VAL_T_ *head = NULL;
+
+
+  while (1) {
+    next_ch(state);
+    if (*state->cursor == '}') {
+      JSON_VAL_T_ *value = malloc(sizeof(JSON_VAL_T_));
+      value->type = JSON_OBJECT;
+      return (JSON_RESULT_T_){ ERR_OK, value };
+    }
+
+    if (*state->cursor != '"') {
+      return err_syn();
+    }
+
+    char key[255];
+    int i = 0;
+    while(*state->cursor != '"') {
+      key[i++] = *state->cursor;
+      state->cursor++;
+      if (i > 255) {
+        return (JSON_RESULT_T_){ ERR_KEYLEN, NULL };
+      }
+    }
+    key[i++] = '\0';
+
+    JSON_ERR_T_ err = ERR_OK;
+    if(key_exists(key, head, &err)) {
+      return (JSON_RESULT_T_){ ERR_DUPKEY, NULL };
+    }
+    if (err != ERR_OK && err != '\0') {
+      return (JSON_RESULT_T_){ err, NULL };
+    }
+
+    next_ch(state);
+    if (*state->cursor != '=') {
+      return err_syn();
+    }
+    next_ch(state);
+
+    JSON_RESULT_T_ cur_val_res = walk_value(state);
+    if (cur_val_res.err != ERR_OK) {
+      return cur_val_res;
+    }
+
+    JSON_KEY_VAL_T_ *item = malloc(sizeof(JSON_KEY_VAL_T_));
+    item->key = malloc(strlen(key));
+    for (int i = 0; i < strlen(key); i++) {
+      item->key[i] = key[i];
+    }
+    item->value = cur_val_res.val;
+    if (prv != NULL) {
+      prv->next = item;
+    }
+    if (head == NULL) {
+      head = item;
+    }
+    prv = item;
+  }
+  
 }
+
 
 JSON_RESULT_T_ walk_arr(PARSING_STATE_T_ *state) {
   if (*state-> cursor != '[') {
@@ -61,6 +160,7 @@ JSON_RESULT_T_ walk_arr(PARSING_STATE_T_ *state) {
 
   JSON_TYPE_T_ *type = NULL;
   JSON_ARRAY_T_ *prv = NULL;
+  JSON_ARRAY_T_ *head = NULL;
   while (1) {
     next_ch(state);
     if (*state->cursor == ']') {
@@ -96,6 +196,10 @@ JSON_RESULT_T_ walk_arr(PARSING_STATE_T_ *state) {
     if (prv != NULL) {
       prv->next = item;
     }
+    if (head == NULL) {
+      head = item;
+    }
+    prv = item;
   }
   
 }
