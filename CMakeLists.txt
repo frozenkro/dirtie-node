@@ -24,14 +24,13 @@ add_executable(${PROJECT_NAME}
   access_point/host.h
   flashmem/flashmem.c
   flashmem/flashmem.h
-  json/json.c
-  json/json.h
   )
 pico_add_extra_outputs(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
   pico_cyw43_arch_lwip_threadsafe_background
   pico_stdlib
   pico_lwip_mqtt
+  hardware_flash
   hardware_i2c
   tinyusb_device
   tinyusb_board
