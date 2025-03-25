@@ -14,14 +14,51 @@ extern uint32_t ADDR_PERSISTENT[];
 // flash sector alignment size
 #define NVS_SIZE 4096
 
+enum _flashmem_err 
+{
+  ERR_OK = 0,
+  ERR_FLASHMEM_SIZE = 1,
+  ERR_INVALID_KEY = 2,
+};
+typedef enum _flashmem_err flashmem_err_t;
+
 // key1=val1,key2=val2,(etc..)\0
 
-int upsert_key(char* key, char* val, char* buf) {
-  //TODO
+// Returns new length
+int esc_chars(char* val) {
+
+}
+
+flashmem_err_t upsert_key(char* key, char* val, char* buf) {
+  if (strrchr(key, '\\') != NULL || strrchr(key, ',') != NULL || strrchr(key, '=') != NULL) {
+    return ERR_INVALID_KEY;
+  }
+
+  // TODO escape all invalid chars in val
+  if (strlen(key) + strlen(val) + strlen(buf) > NVS_SIZE - 1) {
+    return ERR_FLASHMEM_SIZE;
+  }
+
+  int keylen = strlen(key);
+  char *key_search = malloc(keylen + 2);
+  strcpy(key_search, key);
+  key_search[keylen + 1] = '=';
+  key_search[keylen + 2] = '\0';
+
   // if key not present, just append
+  if (strstr(buf, key_search) == NULL) {
+    char *end = strrchr(buf, '\0');
+    strcpy(end, key_search);
+    end = strrchr(buf, '\0');
+    strcpy(end, val);
+    // does strcpy add null to the end of dest?
+  }
+  else {
+
+  }
   // else splice new value
-  // return 1 if value exceeds 4096
-  //
+
+  free(key_search);
   return 0;
 }
 
