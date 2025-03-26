@@ -1,8 +1,10 @@
 #include "pico/stdlib.h"
 #include "stdlib.h"
+#include <lwip/netif.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include "hardware/flash.h"
 
 // Defined in memmap_custom.ld
@@ -16,27 +18,53 @@ extern uint32_t ADDR_PERSISTENT[];
 
 enum _flashmem_err 
 {
-  ERR_OK = 0,
-  ERR_FLASHMEM_SIZE = 1,
-  ERR_INVALID_KEY = 2,
+  FM_ERR_OK = 0,
+  FM_ERR_FLASHMEM_SIZE = 1,
+  FM_ERR_INVALID_KEY = 2,
 };
 typedef enum _flashmem_err flashmem_err_t;
 
 // key1=val1,key2=val2,(etc..)\0
 
-// Returns new length
-int esc_chars(char* val) {
+char* esc_chars(char* val) {
+  if (val == NULL) {
+    return NULL;
+  }
 
+  size_t special_ch_ct = 0;
+  size_t val_len = 0;
+  for (const char* c = val; *c != '\0'; c++) {
+    val_len++;
+    if (*c == '=' || *c == ',' || *c == '\\') {
+      special_ch_ct++;
+    }
+  }
+
+  char* res = malloc(val_len + special_ch_ct + 1);
+  if (res == NULL) {
+    return NULL;
+  }
+
+  char* head = res;
+  for (const char* src = val; *src != '\0'; src++) {
+    if (*src == '=' || *src == ',' || *src == '\\') {
+      *head++ = '\\';
+    }
+    *head = *src;
+  }
+  *head = '\0';
+
+  return res;
 }
 
 flashmem_err_t upsert_key(char* key, char* val, char* buf) {
   if (strrchr(key, '\\') != NULL || strrchr(key, ',') != NULL || strrchr(key, '=') != NULL) {
-    return ERR_INVALID_KEY;
+    return FM_ERR_INVALID_KEY;
   }
 
   // TODO escape all invalid chars in val
   if (strlen(key) + strlen(val) + strlen(buf) > NVS_SIZE - 1) {
-    return ERR_FLASHMEM_SIZE;
+    return FM_ERR_FLASHMEM_SIZE;
   }
 
   int keylen = strlen(key);
@@ -59,7 +87,7 @@ flashmem_err_t upsert_key(char* key, char* val, char* buf) {
   // else splice new value
 
   free(key_search);
-  return 0;
+  return FM_ERR_OK;
 }
 
 int write(char* key, char* val) {
