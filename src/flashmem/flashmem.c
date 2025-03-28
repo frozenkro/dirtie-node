@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include "hardware/flash.h"
+#include "flashmem.h"
 
 // Defined in memmap_custom.ld
 extern uint32_t ADDR_PERSISTENT[];
@@ -16,18 +17,10 @@ extern uint32_t ADDR_PERSISTENT[];
 // flash sector alignment size
 #define NVS_SIZE 4096
 
-enum _flashmem_err 
-{
-  FM_ERR_OK = 0,
-  FM_ERR_FLASHMEM_SIZE = 1,
-  FM_ERR_INVALID_KEY = 2,
-  FM_ERR_CORRUPT = 3,
-};
-typedef enum _flashmem_err flashmem_err_t;
 
 // key1=val1,key2=val2,(etc..)\0
 
-char* esc_chars(char* val) {
+char* esc_chars(const char* val) {
   if (val == NULL) {
     return NULL;
   }
@@ -86,7 +79,7 @@ void splice(char* buf, char* start, char* end, char* replace) {
   free(chunk_post);
 }
 
-flashmem_err_t upsert_key(char* key, char* val, char* buf) {
+flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
   if (strrchr(key, '\\') != NULL || strrchr(key, ',') != NULL || strrchr(key, '=') != NULL) {
     return FM_ERR_INVALID_KEY;
   }
@@ -133,7 +126,7 @@ flashmem_err_t upsert_key(char* key, char* val, char* buf) {
   return FM_ERR_OK;
 }
 
-flashmem_err_t write(char* key, char* val) {
+flashmem_err_t write(const char* key, const char* val) {
   uint8_t *buf = malloc(NVS_SIZE);
 
   memcpy(buf, ADDR_PERSISTENT, NVS_SIZE);
@@ -155,7 +148,7 @@ flashmem_err_t write(char* key, char* val) {
   return FM_ERR_OK;
 }
 
-flashmem_err_t read(char* key, char* out_val) {
+flashmem_err_t read(const char* key, char* out_val) {
   if (strrchr(key, '\\') != NULL || strrchr(key, ',') != NULL || strrchr(key, '=') != NULL) {
     return FM_ERR_INVALID_KEY;
   }
