@@ -3,7 +3,6 @@
 #include "pico/stdio.h"
 #include "pico/stdlib.h"
 
-extern void test_my_module_function(void);
 extern void test_flashmem(void);
 
 int main(void) {
@@ -12,7 +11,7 @@ int main(void) {
     sleep_ms(2000);   // Give time for serial to connect
 
     UNITY_BEGIN();
-    RUN_TEST(test_my_module_function);
+    RUN_TEST(test_flashmem);
     printf("Completed unit tests\n");
     return UNITY_END();
 }

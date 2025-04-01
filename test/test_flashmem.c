@@ -3,6 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+void setUp(void) {
+    // This is run before EACH test
+}
+
+void tearDown(void) {
+    // This is run after EACH test
+}
+
 void test_flashmem() {
   const char* key = "TestKey\0";
   const char* val = "TestVal\0";

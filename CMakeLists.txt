@@ -25,7 +25,6 @@ add_subdirectory(test/Unity Unity_build)
 
 add_executable(test_${PROJECT_NAME}
   test/test_main.c
-  test/test_some_module.c
   test/test_flashmem.c
 )
 
