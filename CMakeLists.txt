@@ -99,3 +99,14 @@ else()
     "This will prevent the device from publishing any data\n"
     "Specify with -DMQTT_BROKER_IP\n")
 endif()
+
+# GDB init stuff
+set(GDB_TARGET_EXECUTABLE "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.elf")
+
+# Configure the gdbinit file
+configure_file(
+    "${CMAKE_SOURCE_DIR}/gdbinit.in"
+    "${CMAKE_BINARY_DIR}/.gdbinit"
+    @ONLY
+)
+
