@@ -19,6 +19,17 @@ extern uint32_t ADDR_PERSISTENT[];
 
 
 // key1=val1,key2=val2,(etc..)\0
+//
+void initialize_flash() {
+  uint8_t *buf = (uint8_t *)ADDR_PERSISTENT_BASE;
+  for (size_t i = 0; i < NVS_SIZE; i++) {
+    if (buf[i] != 0xFF) {
+      return;
+    }
+  }
+
+  flash_range_erase((uint32_t)ADDR_PERSISTENT_BASE - XIP_BASE, NVS_SIZE);
+}
 
 char* esc_chars(const char* val) {
   if (val == NULL) {
@@ -83,14 +94,15 @@ flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
   if (strrchr(key, '\\') != NULL || strrchr(key, ',') != NULL || strrchr(key, '=') != NULL) {
     return FM_ERR_INVALID_KEY;
   }
+  initialize_flash();
 
   char* clean_val = esc_chars(val);
 
   int keylen = strlen(key);
   char *key_search = malloc(keylen + 2);
   strcpy(key_search, key);
-  key_search[keylen + 1] = '=';
-  key_search[keylen + 2] = '\0';
+  key_search[keylen] = '=';
+  key_search[keylen + 1] = '\0';
 
   char* key_val_item = malloc(strlen(key_search) + strlen(clean_val) + 1);
   strcpy(key_val_item, key_search);
@@ -164,7 +176,17 @@ flashmem_err_t read(const char* key, char* out_val) {
   if (ass == NULL) {
     return FM_ERR_CORRUPT;
   }
-  out_val = ass + 1;
+
+  char* val = ass + 1;
+  char* val_end = strrchr(val, ',');
+  if (val_end == NULL) {
+    val_end = strrchr(val, '\0');
+  }
+  if (val_end == NULL) {
+    return FM_ERR_CORRUPT;
+  }
+
+  memcpy(out_val, val, val_end - val);
 
   free(key_search);
   return FM_ERR_OK;
