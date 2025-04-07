@@ -53,9 +53,11 @@ char* esc_chars(const char* val) {
   char* head = res;
   for (const char* src = val; *src != '\0'; src++) {
     if (*src == '=' || *src == ',' || *src == '\\') {
-      *head++ = '\\';
+      *head = '\\';
+      head++;
     }
     *head = *src;
+    head++;
   }
   *head = '\0';
 
@@ -72,9 +74,14 @@ char* get_next_item(char *ptr) {
   return NULL;
 }
 
-void splice(char* buf, char* start, char* end, char* replace) {
+flashmem_err_t splice(char* buf, char* start, char* end, char* replace) {
   int start_idx = start - buf;
   int end_idx = strrchr(buf, '\0') - end;
+
+  if (strlen(buf) + (start_idx - end_idx) + strlen(replace) > NVS_SIZE) {
+    return FM_ERR_FLASHMEM_SIZE;
+  }
+
   char* chunk_pre = malloc(start - buf);
   memcpy(chunk_pre, buf, start-buf);
   char* chunk_post = malloc(end_idx);
@@ -88,6 +95,8 @@ void splice(char* buf, char* start, char* end, char* replace) {
   
   free(chunk_pre);
   free(chunk_post);
+
+  return FM_ERR_OK;
 }
 
 flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
@@ -119,14 +128,16 @@ flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
     }
 
     char *end = strrchr(buf, '\0');
-    strcpy(end, key_val_item);
+    memset(end, ',', 1);
+    memcpy(++end, key_val_item, strlen(key_val_item) + 1);
   }
   else {
   // else splice new value in place
     char* next_item = get_next_item(key_loc);
     if (next_item == NULL) {
       char *end = strrchr(buf, '\0');
-      strcpy(end, key_val_item);
+      memset(end, ',', 1);
+      memcpy(++end, key_val_item, strlen(key_val_item) + 1);
     }
     else {
       splice(buf, key_loc, next_item, key_val_item);
