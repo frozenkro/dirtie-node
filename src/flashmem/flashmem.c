@@ -20,15 +20,28 @@ extern uint32_t ADDR_PERSISTENT[];
 
 // key1=val1,key2=val2,(etc..)\0
 //
-void initialize_flash() {
+flashmem_err_t initialize_flash() {
   uint8_t *buf = (uint8_t *)ADDR_PERSISTENT_BASE;
   for (size_t i = 0; i < NVS_SIZE; i++) {
     if (buf[i] != 0xFF) {
-      return;
+      return FM_ERR_OK;
     }
   }
 
+
+  uint8_t *zero_buf = malloc(NVS_SIZE);
+  if (zero_buf == NULL) {
+    return FM_ERR_MALLOC;
+  }
+  memset(zero_buf, 0, NVS_SIZE);
+
+  //START Critical Section
   flash_range_erase((uint32_t)ADDR_PERSISTENT_BASE - XIP_BASE, NVS_SIZE);
+  flash_range_program((uint32_t)ADDR_PERSISTENT_BASE - XIP_BASE, zero_buf, NVS_SIZE);
+  //END Critical Section
+
+  free(zero_buf);
+  return FM_ERR_OK;
 }
 
 char* esc_chars(const char* val) {
