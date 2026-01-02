@@ -5,6 +5,7 @@
 
 void setUp(void) {
     // This is run before EACH test
+  initialize_flash(true);
 }
 
 void tearDown(void) {

@@ -2,6 +2,7 @@
 #define FLASHMEM_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // Defined in memmap_custom.ld
 extern uint32_t ADDR_PERSISTENT[];
@@ -27,5 +28,6 @@ typedef enum _flashmem_err flashmem_err_t;
 
 flashmem_err_t write(const char* key, const char* val);
 flashmem_err_t read(const char* key, char* out_val);
+flashmem_err_t initialize_flash(bool force_clear);
 
 #endif

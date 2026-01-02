@@ -10,12 +10,13 @@
 
 
 // key1=val1,key2=val2,(etc..)\0
-//
-flashmem_err_t initialize_flash() {
-  uint8_t *buf = (uint8_t *)ADDR_PERSISTENT_BASE;
-  for (size_t i = 0; i < NVS_SIZE; i++) {
-    if (buf[i] != 0xFF) {
-      return FM_ERR_OK;
+flashmem_err_t initialize_flash(bool force_clear) {
+  if (!force_clear) {
+    uint8_t *buf = (uint8_t *)ADDR_PERSISTENT_BASE;
+    for (size_t i = 0; i < NVS_SIZE; i++) {
+      if (buf[i] != 0xFF) {
+        return FM_ERR_OK;
+      }
     }
   }
 
@@ -79,23 +80,23 @@ char* get_next_item(char *ptr) {
 }
 
 flashmem_err_t splice(char* buf, char* start, char* end, char* replace) {
-  int start_idx = start - buf;
-  int end_idx = strchr(buf, '\0') - end;
+  int start_sz = start - buf;
+  int end_sz = strlen(end);
 
-  if (strlen(buf) + (start_idx - end_idx) + strlen(replace) > NVS_SIZE) {
+  if (strlen(buf) + (start_sz - end_sz) + strlen(replace) > NVS_SIZE) {
     return FM_ERR_FLASHMEMSIZE;
   }
 
   char* chunk_pre = malloc(start - buf);
   memcpy(chunk_pre, buf, start-buf);
-  char* chunk_post = malloc(end_idx);
-  memcpy(chunk_post, end, end_idx);
+  char* chunk_post = malloc(end_sz);
+  memcpy(chunk_post, end, end_sz);
 
   memset(buf, 0, NVS_SIZE);
-  memcpy(buf, chunk_pre, start_idx);
+  memcpy(buf, chunk_pre, start_sz);
   memcpy(start, replace, strlen(replace));
   char* new_chunk_post_start = strchr(start, '\0');
-  memcpy(new_chunk_post_start, chunk_post, strlen(end));
+  memcpy(new_chunk_post_start, chunk_post, end_sz);
   
   free(chunk_pre);
   free(chunk_post);
@@ -107,7 +108,7 @@ flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
   if (strchr(key, '\\') != NULL || strchr(key, ',') != NULL || strchr(key, '=') != NULL) {
     return FM_ERR_INVALIDKEY;
   }
-  initialize_flash();
+  initialize_flash(false);
 
   char* clean_val = esc_chars(val);
 
