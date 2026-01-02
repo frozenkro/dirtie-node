@@ -16,11 +16,12 @@ extern uint32_t ADDR_PERSISTENT[];
 enum _flashmem_err 
 {
   FM_ERR_OK = 0,
-  FM_ERR_FLASHMEM_SIZE = 1,
-  FM_ERR_INVALID_KEY = 2,
+  FM_ERR_FLASHMEMSIZE = 1,
+  FM_ERR_INVALIDKEY = 2,
   FM_ERR_CORRUPT = 3,
   FM_ERR_MALLOC = 4,
-  FM_ERR_VAL_SIZE = 5,
+  FM_ERR_VALSIZE = 5,
+  FMERR_KEYNOTFOUND = 6,
 };
 typedef enum _flashmem_err flashmem_err_t;
 

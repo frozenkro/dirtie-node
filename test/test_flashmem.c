@@ -15,7 +15,7 @@ void test_flashmem() {
   const char* key = "TestKey\0";
   const char* val = "TestVal\0";
 
-  char* res = malloc(MAX_VAL_SIZE);
+  char* res = calloc(MAX_VAL_SIZE, sizeof(char));
 
   flashmem_err_t err = write(key, val);
   TEST_ASSERT_EQUAL(FM_ERR_OK, err);

@@ -83,7 +83,7 @@ flashmem_err_t splice(char* buf, char* start, char* end, char* replace) {
   int end_idx = strchr(buf, '\0') - end;
 
   if (strlen(buf) + (start_idx - end_idx) + strlen(replace) > NVS_SIZE) {
-    return FM_ERR_FLASHMEM_SIZE;
+    return FM_ERR_FLASHMEMSIZE;
   }
 
   char* chunk_pre = malloc(start - buf);
@@ -105,7 +105,7 @@ flashmem_err_t splice(char* buf, char* start, char* end, char* replace) {
 
 flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
   if (strchr(key, '\\') != NULL || strchr(key, ',') != NULL || strchr(key, '=') != NULL) {
-    return FM_ERR_INVALID_KEY;
+    return FM_ERR_INVALIDKEY;
   }
   initialize_flash();
 
@@ -128,7 +128,7 @@ flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
   // if key not present, just append
   if (key_loc == NULL) {
     if (strlen(key_search) + strlen(clean_val) + strlen(buf) + 1 > NVS_SIZE - 1) {
-      return FM_ERR_FLASHMEM_SIZE;
+      return FM_ERR_FLASHMEMSIZE;
     }
 
     char *end = strchr(buf, '\0');
@@ -136,16 +136,12 @@ flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
     memcpy(++end, key_val_item, strlen(key_val_item) + 1);
   }
   else {
-  // else splice new value in place
-    char* next_item = get_next_item(key_loc);
-    if (next_item == NULL) {
-      char *end = strchr(buf, '\0');
-      memset(end, ',', 1);
-      memcpy(++end, key_val_item, strlen(key_val_item) + 1);
+    // else splice new value in place
+    char* end = get_next_item(key_loc);
+    if (end == NULL) {
+      end = strchr(buf, '\0');
     }
-    else {
-      splice(buf, key_loc, next_item, key_val_item);
-    }
+    splice(buf, key_loc, end, key_val_item);
   }
 
   free(clean_val);
@@ -155,7 +151,7 @@ flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
 
 flashmem_err_t write(const char* key, const char* val) {
   if (strlen(val) > MAX_VAL_SIZE) {
-    return FM_ERR_VAL_SIZE;
+    return FM_ERR_VALSIZE;
   }
 
   uint8_t *buf = malloc(NVS_SIZE);
@@ -178,23 +174,23 @@ flashmem_err_t write(const char* key, const char* val) {
   return FM_ERR_OK;
 }
 
-flashmem_err_t get_val_end(char* val, char* val_end) {
-  val_end = NULL;
+flashmem_err_t get_val_end(char* val, char** val_end) {
+  *val_end = NULL;
   
-  for (int i = 0; i < strlen(val_end); i++) {
+  for (int i = 0; i < strlen(val); i++) {
     if (val[i] == '\\') {
       i++;
     }
     if (val[i] == ',') {
-      val_end = val + i;
+      *val_end = val + i;
       break;
     }
   }
 
-  if (val_end == NULL) {
-    val_end = strchr(val, '\0');
+  if (*val_end == NULL) {
+    *val_end = strchr(val, '\0');
   }
-  if (val_end == NULL) {
+  if (*val_end == NULL) {
     return FM_ERR_CORRUPT;
   }
   return FM_ERR_OK;
@@ -202,7 +198,7 @@ flashmem_err_t get_val_end(char* val, char* val_end) {
 
 flashmem_err_t read(const char* key, char* out_val) {
   if (strchr(key, '\\') != NULL || strchr(key, ',') != NULL || strchr(key, '=') != NULL) {
-    return FM_ERR_INVALID_KEY;
+    return FM_ERR_INVALIDKEY;
   }
 
   int keylen = strlen(key);
@@ -212,6 +208,11 @@ flashmem_err_t read(const char* key, char* out_val) {
   key_search[keylen + 1] = '\0';
 
   char* key_loc = strstr((char*)ADDR_PERSISTENT, key_search);
+  if (key_loc == NULL) {
+    free(key_search);
+    return FMERR_KEYNOTFOUND;
+  }
+
   char* ass = strchr(key_loc, '=');
   if (ass == NULL) {
     return FM_ERR_CORRUPT;
@@ -219,7 +220,7 @@ flashmem_err_t read(const char* key, char* out_val) {
 
   char* val = ass + 1;
   char* val_end;
-  flashmem_err_t err = get_val_end(val, val_end);
+  flashmem_err_t err = get_val_end(val, &val_end);
   if (err != FM_ERR_OK) {
     return err;
   }
@@ -228,9 +229,11 @@ flashmem_err_t read(const char* key, char* out_val) {
   out_val[val_end - val] = 0;
 
   char* esc_char = out_val;
-  while (esc_char != NULL) {
+  char* end = out_val - strlen(out_val);
+  while (esc_char < end) {
     if (*esc_char == '\\') {
       strcpy(esc_char, esc_char + 1);
+      end--;
     }
     esc_char++;
   }

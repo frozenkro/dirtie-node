@@ -9,7 +9,7 @@ extern void test_flashmem_overwrite(void);
 
 int main(void) {
     stdio_init_all();
-    sleep_ms(2000);   // Give time for serial to connect
+    // sleep_ms(2000);   // Give time for serial to connect
     printf("Begin unit tests..\n");
 
     UNITY_BEGIN();
