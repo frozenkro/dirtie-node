@@ -1,5 +1,4 @@
 #include "connect/connect.h"
-#include "dt_globals.h"
 #include "hardware/gpio.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
@@ -7,18 +6,14 @@
 #include "sensor/sensor.h"
 #include "test.h"
 #include <stdio.h>
+#include "state/state.h"
 
 #ifndef TEST_MODE
 #define TEST_MODE 0
 #endif
 
-char* WIFI_SSID;
-char* WIFI_PASSWORD;
-
-struct loop_state {
-  uint16_t last_published_capacitance;
-  uint16_t last_published_temperature;
-};
+// char* WIFI_SSID;
+// char* WIFI_PASSWORD;
 
 int init_offline_modules() {
   if (sensor_init()) {
@@ -43,16 +38,15 @@ int init_network_modules() {
 }
 
 bool hourly_update(struct repeating_timer *t) {
-  struct loop_state *state = t->user_data;
-  uint16_t cap;
-  uint16_t temp;
-  sensor_check(&cap, &temp);
+  APP_CTX_T *ctx = t->user_data;
+  ctx->set_publish = 1;
 
-  state->last_published_temperature = temp;
-  state->last_published_capacitance = cap;
-
-  // TODO publish results 
   return true;
+}
+
+DT_ERR_E throttle_listen_handler(APP_CTX_T* _) {
+  sleep_ms(1000);
+  return DT_ERR_OK;
 }
 
 int main() {
@@ -64,31 +58,20 @@ int main() {
   }
   printf("CYW43 Initialized\n");
 
-/* #if TEST_MODE == 1 */
-/*   test(); */
+  APP_CTX_T *ctx = malloc(sizeof(APP_CTX_T));
 
-/* #else */
-  if (init_offline_modules()) {
-    return 1;
-  }
-
-  // Await WIFI configuration over usb
-  // TODO store to persistent storage and skip this 
-  while (1) {
-    if (WIFI_SSID[0] != '\0' && WIFI_PASSWORD[0] != '\0') {
-      break;
-    }
-    sleep_ms(250);
-  }
-  
-  struct loop_state loop_state;
-  loop_state.last_published_capacitance = 0;
-  loop_state.last_published_temperature = 0;
-  
+  // Regular publish interval
   struct repeating_timer timer;
+  add_repeating_timer_ms(3600000, hourly_update, &ctx, &timer);
 
-  add_repeating_timer_ms(3600000, hourly_update, &loop_state, &timer);
   while (1) {
+    DT_ERR_E err = LOOP_STATE_CALLBACKS[ctx->loop_state](ctx);
+    if (err) {
+      printf("Error: %d\n", err);
+    }
+
+
+
     // Check time/timer
     // Check sensor
     // // If diff between new reading and last published reading > 50,
@@ -107,5 +90,8 @@ int main() {
 
     sleep_ms(1000);
   }
+
+  // If ever a graceful shutdown is required
+  free(ctx);
 /* #endif */
 }
