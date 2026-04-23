@@ -70,7 +70,7 @@ int main() {
       printf("Error: %d\n", err);
     }
 
-
+    update_state(ctx);
 
     // Check time/timer
     // Check sensor

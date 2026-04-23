@@ -36,5 +36,6 @@ typedef struct {
 
 typedef DT_ERR_E (*loop_state_cb_t)(APP_CTX_T*);
 extern const loop_state_cb_t LOOP_STATE_CALLBACKS[LOOP_STATE_COUNT];
+extern void update_state(APP_CTX_T*);
 
 #endif
