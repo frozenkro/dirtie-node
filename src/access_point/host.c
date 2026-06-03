@@ -10,6 +10,7 @@
 #include "lwip/tcp.h"
 
 #include "dhcpserver.h"
+#include "state/state.h"
 #include "access_point/host.h"
 
 #define TCP_PORT 80
@@ -24,6 +25,7 @@ typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
     bool complete;
     ip_addr_t gw;
+    APP_CTX_T *ctx;
 } TCP_SERVER_T;
 
 typedef struct TCP_CONNECT_STATE_T_ {
@@ -34,6 +36,7 @@ typedef struct TCP_CONNECT_STATE_T_ {
     int header_len;
     int result_len;
     ip_addr_t *gw;
+    APP_CTX_T *ctx
 } TCP_CONNECT_STATE_T;
 
 static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct tcp_pcb *client_pcb, err_t close_err) {
@@ -76,7 +79,7 @@ static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
     return ERR_OK;
 }
 
-static bool parse_wifi_credentials(char *json) {
+static bool parse_wifi_credentials(APP_CTX_T *ctx, char *json) {
   const char* ssid_query = "\"ssid\":\"";
   int ssid_skip = strlen(ssid_query);
   const char* ssid_start = strstr(json, ssid_query);
@@ -98,12 +101,12 @@ static bool parse_wifi_credentials(char *json) {
     return false;
   }
 
-  memcpy(WIFI_SSID, ssid_start, ssid_end - ssid_start);
-  WIFI_SSID[ssid_end - ssid_start] = '\0';
-  memcpy(WIFI_PASSWORD, pw_start, pw_end - pw_start);
-  WIFI_PASSWORD[pw_end - pw_start] = '\0';
+  memcpy(ctx->wifi_ssid, ssid_start, ssid_end - ssid_start);
+  ctx->wifi_ssid[ssid_end - ssid_start] = '\0';
+  memcpy(ctx->wifi_pass, pw_start, pw_end - pw_start);
+  ctx->wifi_pass[pw_end - pw_start] = '\0';
 
-  WIFI_CONFIGURED = 1;
+  ctx->wifi_configd = 1;
   return true;
 }
 
@@ -130,7 +133,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
                   //skip rnrn
                   json_start += 4;
 
-                  if (parse_wifi_credentials(json_start)) {
+                  if (parse_wifi_credentials(con_state->ctx, json_start)) {
                     const char* response = "HTTP/1.1 200 OK\r\n\r\n";
 
                     err_t err = tcp_write(pcb, response, strlen(response), 0);
@@ -195,6 +198,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
     }
     con_state->pcb = client_pcb; // for checking
     con_state->gw = &state->gw;
+    con_state->ctx = state->ctx;
 
     // setup connection to client
     tcp_arg(client_pcb, con_state);
@@ -238,13 +242,15 @@ static int tcp_server_open(void *arg, const char *ap_name) {
 }
 
 
-int host_provisioning_ap() {
+int host_provisioning_ap(APP_CTX_T *ctx) {
 
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
     if (!state) {
         printf("failed to allocate state\n");
         return 1;
     }
+
+    state->ctx = ctx;
 
     const char *ap_name = "dirtie";
     const char *password = NULL;

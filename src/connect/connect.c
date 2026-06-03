@@ -10,6 +10,7 @@
 #include "pico/types.h"
 #include <stdio.h>
 #include <string.h>
+#include "state/state.h"
 
 #define BUF_SIZE 2048
 
@@ -192,10 +193,9 @@ int mqtt_run_test(MQTT_CLIENT_T *state) {
   return 0;
 }
 
-int mqtt_test(char ssid[], char password[], char ip[],
-              int (*check_cancel_cb)()) {
+int mqtt_test(APP_CTX_T *ctx, int (*check_cancel_cb)()) {
   // put in station mode because we are making connections from device
-  if (!WIFI_CONFIGURED) {
+  if (!ctx->wifi_configd) {
     printf("wifi credentials not yet configured\n");
     return 1;
   }
@@ -203,8 +203,8 @@ int mqtt_test(char ssid[], char password[], char ip[],
 
   cyw43_arch_enable_sta_mode();
 
-  printf("connecting to %s\n", ssid);
-  if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD,
+  printf("connecting to %s\n", ctx->wifi_ssid);
+  if (cyw43_arch_wifi_connect_timeout_ms(ctx->wifi_ssid, ctx->wifi_pass,
                                          CYW43_AUTH_WPA2_AES_PSK, 30000)) {
     printf("failed to connect.\n");
     return 1;
@@ -215,9 +215,9 @@ int mqtt_test(char ssid[], char password[], char ip[],
   MQTT_CLIENT_T *state = mqtt_client_init();
 
   // assign ip to state based on string
-  int succ = ip4addr_aton(ip, &state->remote_addr);
+  int succ = ip4addr_aton(ctx->mqtt_ip, &state->remote_addr);
   if (!succ) {
-    printf("Invalid IP String %s, exiting", ip);
+    printf("Invalid IP String %s, exiting", ctx->mqtt_ip);
     return 1;
   }
 
@@ -229,7 +229,7 @@ int mqtt_test(char ssid[], char password[], char ip[],
   return 0;
 }
 
-int mqtt_init(char ssid[], char password[], char ip[]) {
+int mqtt_init(APP_CTX_T *ctx) {
   // TODO
   return 0;
 }
