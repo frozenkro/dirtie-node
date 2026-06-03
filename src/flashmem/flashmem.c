@@ -122,7 +122,6 @@ flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
   strcpy(key_val_item, key_search);
   char* val_item = key_val_item + strlen(key_search);
   strcpy(val_item, clean_val);
-  key_val_item[strlen(key_search) + strlen(clean_val) + 1] = '\0';
 
   char* key_loc = strstr(buf, key_search);
 
@@ -230,10 +229,10 @@ flashmem_err_t read(const char* key, char* out_val) {
   out_val[val_end - val] = 0;
 
   char* esc_char = out_val;
-  char* end = out_val - strlen(out_val);
+  char* end = out_val + strlen(out_val);
   while (esc_char < end) {
     if (*esc_char == '\\') {
-      strcpy(esc_char, esc_char + 1);
+      memmove(esc_char, esc_char + 1, strlen(esc_char + 1) + 1);
       end--;
     }
     esc_char++;

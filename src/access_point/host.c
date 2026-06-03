@@ -10,7 +10,6 @@
 #include "lwip/tcp.h"
 
 #include "dhcpserver.h"
-#include "dt_globals.h"
 #include "access_point/host.h"
 
 #define TCP_PORT 80
@@ -84,7 +83,7 @@ static bool parse_wifi_credentials(char *json) {
 
   const char* pw_query = "\"password\":\"";
   int pw_skip = strlen(pw_query);
-  const char* pw_start;
+  const char* pw_start = strstr(json, pw_query);
   if (!ssid_start || !pw_start) {
     return false;
   }
