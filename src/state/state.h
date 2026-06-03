@@ -27,7 +27,7 @@ typedef struct {
   char *wifi_ssid;
   char *wifi_pass;
 
-  char *mqtt_ip;
+  char *hub_loc;
   
   uint16_t capacitance;
   uint16_t temperature;

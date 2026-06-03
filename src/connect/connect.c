@@ -1,5 +1,4 @@
 #include "connect.h"
-#include "dt_globals.h"
 #include "lwip/apps/mqtt.h"
 #include "lwip/apps/mqtt_priv.h"
 #include "lwip/ip4_addr.h"
@@ -215,9 +214,9 @@ int mqtt_test(APP_CTX_T *ctx, int (*check_cancel_cb)()) {
   MQTT_CLIENT_T *state = mqtt_client_init();
 
   // assign ip to state based on string
-  int succ = ip4addr_aton(ctx->mqtt_ip, &state->remote_addr);
+  int succ = ip4addr_aton(ctx->hub_loc, &state->remote_addr);
   if (!succ) {
-    printf("Invalid IP String %s, exiting", ctx->mqtt_ip);
+    printf("Invalid IP String %s, exiting", ctx->hub_loc);
     return 1;
   }
 

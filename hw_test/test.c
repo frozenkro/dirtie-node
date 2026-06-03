@@ -1,6 +1,5 @@
 #include "test.h"
 #include "connect/connect.h"
-#include "dt_globals.h"
 #include "hardware/gpio.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"

@@ -86,6 +86,9 @@ pico_enable_stdio_uart(${PROJECT_NAME} 1)
 # set(TEST_MODE 1)
 # target_compile_definitions(${PROJECT_NAME} PRIVATE "TEST_MODE=${TEST_MODE}")
 
+# hard code to location of hub. If hosted publicly someday put domain here
+set(HUB_LOC "192.168.0.114")
+
 if (DEFINED ENV{MQTT_BROKER_IP} AND (NOT MQTT_BROKER_IP))
   set (MQTT_BROKER_IP $ENV{MQTT_BROKER_IP})
   message("Using MQTT_BROKER_IP from environment ('${MQTT_BROKER_IP}')")

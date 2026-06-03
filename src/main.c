@@ -12,6 +12,9 @@
 #define TEST_MODE 0
 #endif
 
+// Set in cmakelists
+char* HUB_LOC;
+
 // char* WIFI_SSID;
 // char* WIFI_PASSWORD;
 
@@ -59,6 +62,7 @@ int main() {
   printf("CYW43 Initialized\n");
 
   APP_CTX_T *ctx = malloc(sizeof(APP_CTX_T));
+  ctx->hub_loc = HUB_LOC;
 
   // Regular publish interval
   struct repeating_timer timer;
