@@ -13,34 +13,11 @@
 #endif
 
 // Set in cmakelists
-char* HUB_LOC;
+const char* HUB_LOC;
 
-// char* WIFI_SSID;
-// char* WIFI_PASSWORD;
+const int32_t SAMPLE_RATE = 5000; // 5 seconds
 
-int init_offline_modules() {
-  if (sensor_init()) {
-    printf("error occurred while initializing i2c sensor module");
-    return 1;
-  }
-  return 0;
-}
-
-int init_network_modules() {
-# ifndef MQTT_BROKER_IP
-  printf("No MQTT_BROKER_IP defined, no data will be published");
-  return 0;
-# else 
-  
-  if (mqtt_init(WIFI_SSID, WIFI_PASSWORD, MQTT_BROKER_IP)) {
-    printf("error occured while initializing mqtt connection");
-    return 1;
-  }
-  return 0;
-#endif
-}
-
-bool hourly_update(struct repeating_timer *t) {
+bool sample_rate_update(struct repeating_timer *t) {
   APP_CTX_T *ctx = t->user_data;
   ctx->set_publish = 1;
 
@@ -48,9 +25,15 @@ bool hourly_update(struct repeating_timer *t) {
 }
 
 DT_ERR_E throttle_listen_handler(APP_CTX_T* _) {
-  sleep_ms(1000);
+  sleep_ms(100);
   return DT_ERR_OK;
 }
+
+DT_ERR_E batt_listen_handler(APP_CTX_T *_) {
+  // Have not yet implemented battery sensing
+  return DT_ERR_OK;
+}
+
 
 int main() {
   stdio_init_all();
@@ -62,11 +45,11 @@ int main() {
   printf("CYW43 Initialized\n");
 
   APP_CTX_T *ctx = malloc(sizeof(APP_CTX_T));
-  ctx->hub_loc = HUB_LOC;
+  strcpy(ctx->hub_loc, HUB_LOC);
 
   // Regular publish interval
   struct repeating_timer timer;
-  add_repeating_timer_ms(3600000, hourly_update, &ctx, &timer);
+  add_repeating_timer_ms(SAMPLE_RATE, sample_rate_update, ctx, &timer);
 
   while (1) {
     DT_ERR_E err = LOOP_STATE_CALLBACKS[ctx->loop_state](ctx);

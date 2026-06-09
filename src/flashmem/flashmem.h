@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "state/state.h"
 
 // Defined in memmap_custom.ld
 extern uint32_t ADDR_PERSISTENT[];
@@ -14,20 +15,11 @@ extern uint32_t ADDR_PERSISTENT[];
 // flash sector alignment size
 #define NVS_SIZE 4096
 
-enum _flashmem_err 
-{
-  FM_ERR_OK = 0,
-  FM_ERR_FLASHMEMSIZE = 1,
-  FM_ERR_INVALIDKEY = 2,
-  FM_ERR_CORRUPT = 3,
-  FM_ERR_MALLOC = 4,
-  FM_ERR_VALSIZE = 5,
-  FMERR_KEYNOTFOUND = 6,
-};
-typedef enum _flashmem_err flashmem_err_t;
+DT_ERR_E write(const char* key, const char* val);
+DT_ERR_E read(const char* key, char* out_val);
+DT_ERR_E initialize_flash(bool force_clear);
 
-flashmem_err_t write(const char* key, const char* val);
-flashmem_err_t read(const char* key, char* out_val);
-flashmem_err_t initialize_flash(bool force_clear);
+DT_ERR_E flash_init_handler(APP_CTX_T *ctx);
+DT_ERR_E flash_write_handler(APP_CTX_T *ctx);
 
 #endif

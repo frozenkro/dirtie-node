@@ -1,7 +1,10 @@
 #include "state.h"
 #include <stdio.h>
+#include <stdlib.h>
 
+extern DT_ERR_E flash_init_handler(APP_CTX_T*);
 extern DT_ERR_E wifi_config_handler(APP_CTX_T*);
+extern DT_ERR_E flash_write_handler(APP_CTX_T*);
 extern DT_ERR_E mqtt_init_handler(APP_CTX_T*);
 extern DT_ERR_E sense_init_handler(APP_CTX_T*);
 extern DT_ERR_E mqtt_publish_handler(APP_CTX_T*);
@@ -11,19 +14,35 @@ extern DT_ERR_E sense_listen_handler(APP_CTX_T*);
 extern DT_ERR_E throttle_listen_handler(APP_CTX_T*);
 
 const loop_state_cb_t LOOP_STATE_CALLBACKS[LOOP_STATE_COUNT] = {
+  [FLASH_INIT] = flash_init_handler,
   [WIFI_CONFIG] = wifi_config_handler,
+  [FLASH_WRITE] = flash_write_handler,
   [MQTT_INIT] = mqtt_init_handler,
   [SENSE_INIT] = sense_init_handler,
   [MQTT_PUBLISH] = mqtt_publish_handler,
   [MQTT_LISTEN] = mqtt_listen_handler,
   [BATT_LISTEN] = batt_listen_handler,
   [SENSE_LISTEN] = sense_listen_handler,
+  [THROTTLE] = throttle_listen_handler,
 };
 
 void update_state(APP_CTX_T *ctx) {
   switch (ctx->loop_state) {
+  case FLASH_INIT:
+    if (ctx->flash_initd) {
+      if (ctx->wifi_configd) {
+        ctx->loop_state = MQTT_INIT;
+      } else {
+        ctx->loop_state = WIFI_CONFIG;
+      }
+    }
   case WIFI_CONFIG:
     if (ctx->wifi_configd) {
+      ctx->loop_state = FLASH_WRITE;
+    }
+    break;
+  case FLASH_WRITE:
+    if (ctx->flash_written) {
       ctx->loop_state = MQTT_INIT;
     }
     break;

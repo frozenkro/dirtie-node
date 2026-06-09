@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "pico/cyw43_arch.h"
-#include "pico/stdlib.h"
 
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
@@ -16,10 +15,10 @@
 #define TCP_PORT 80
 #define POLL_TIME_S 5
 #define HTTP_POST "POST"
-#define WIFI_CREDENTIALS_ENDPOINT "/wifi-setup"
+#define WIFI_CREDENTIALS_ENDPOINT "/provision"
 #define MAX_CONTENT_LENGTH 1024
 
-int *HOSTING = 0;
+int HOSTING = 0;
 
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
@@ -87,17 +86,27 @@ static bool parse_wifi_credentials(APP_CTX_T *ctx, char *json) {
   const char* pw_query = "\"password\":\"";
   int pw_skip = strlen(pw_query);
   const char* pw_start = strstr(json, pw_query);
-  if (!ssid_start || !pw_start) {
+
+  const char* tkn_query = "\"token\":\"";
+  int tkn_skip = strlen(tkn_query);
+  const char *tkn_start = strstr(json, tkn_query);
+
+  if (!ssid_start || !pw_start || !tkn_start) {
     return false;
   }
 
+
   ssid_start += ssid_skip;
   pw_start += pw_skip;
+  tkn_start += tkn_skip;
 
   const char* ssid_end = strchr(ssid_start, '"');
   const char* pw_end = strchr(pw_start, '"');
+  const char* tkn_end = strchr(tkn_start, '"');
 
-  if (!ssid_end || ssid_end - ssid_start > 64 || !pw_end || pw_end - pw_start > 64) {
+  if (!ssid_end || ssid_end - ssid_start > 64 
+      || !pw_end || pw_end - pw_start > 64
+      || !tkn_end || tkn_end - tkn_start > 64) {
     return false;
   }
 
@@ -105,6 +114,8 @@ static bool parse_wifi_credentials(APP_CTX_T *ctx, char *json) {
   ctx->wifi_ssid[ssid_end - ssid_start] = '\0';
   memcpy(ctx->wifi_pass, pw_start, pw_end - pw_start);
   ctx->wifi_pass[pw_end - pw_start] = '\0';
+  memcpy(ctx->prv_token, tkn_start, tkn_end - tkn_start);
+  ctx->prv_token[tkn_end - tkn_start] = '\0';
 
   ctx->wifi_configd = 1;
   return true;
@@ -242,12 +253,12 @@ static int tcp_server_open(void *arg, const char *ap_name) {
 }
 
 
-int host_provisioning_ap(APP_CTX_T *ctx) {
+DT_ERR_E host_provisioning_ap(APP_CTX_T *ctx) {
 
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
     if (!state) {
         printf("failed to allocate state\n");
-        return 1;
+        return DT_ERR_MALLOC;
     }
 
     state->ctx = ctx;
@@ -265,15 +276,21 @@ int host_provisioning_ap(APP_CTX_T *ctx) {
 
     if (!tcp_server_open(state, ap_name)) {
         printf("failed to open server\n");
-        return 1;
+        return DT_ERR_OPENSERVER;
     }
 
-    state->complete = false;
-    while(!state->complete) {
-      // wait for connection from device and provisioning info to be sent 
-      // then continue
-      sleep_ms(500);
-    }
+    HOSTING = 1;
 
-    return 0;
+    return DT_ERR_OK;
+}
+
+DT_ERR_E wifi_config_handler(APP_CTX_T *ctx) {
+  if (!HOSTING) {
+    DT_ERR_E err = host_provisioning_ap(ctx);
+    if (err != DT_ERR_OK) {
+      return err; // this is redundant 
+    }
+  }
+
+  return DT_ERR_OK;
 }

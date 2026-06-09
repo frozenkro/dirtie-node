@@ -1,6 +1,5 @@
 #include "sensor.h"
 #include "hardware/i2c.h"
-#include "pico/stdlib.h"
 #include "pico/time.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -22,6 +21,7 @@ static const uint8_t REG_BME280 = 0x76;
 // Pins 
 static const uint SDA_PIN = 4;
 static const uint SCL_PIN = 5;
+
 i2c_inst_t *i2c;
 
 int seesaw_reg_read(i2c_inst_t *i2c, const uint addr, const uint8_t baseReg,
@@ -79,20 +79,39 @@ int sensor_test() {
   return 0;
 }
 
-int sensor_init() {
+DT_ERR_E sensor_init() {
   i2c = i2c0;
   
   // init I2C port @ 100 khz per adafruit seesaw recommendation
-  i2c_init(i2c0, 100 * 1000);
+  if (i2c_init(i2c0, 100 * 1000)) {
+    return DT_ERR_I2CINIT;
+  }
 
   gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);
   gpio_set_function(SCL_PIN, GPIO_FUNC_I2C);
   gpio_pull_up(SDA_PIN);
   gpio_pull_up(SCL_PIN);
 
-  return 0;
+  return DT_ERR_OK;
 }
 
-int sensor_check(uint16_t *capacitance, uint16_t *temperature) {
-  
+DT_ERR_E sense_init_handler(APP_CTX_T *ctx) {
+  DT_ERR_E err = sensor_init();
+  if (err != DT_ERR_OK) {
+    return err;
+  }
+
+  ctx->sense_initd = true;
+  return DT_ERR_OK;
+}
+
+DT_ERR_E sense_listen_handler(APP_CTX_T *ctx) {
+  ctx->cprev = ctx->capacitance;
+  ctx->capacitance = seesaw_read_16(
+      i2c0, ADAFRUIT_SENSOR_ADDR, REG_CAPACITANCE_BASE, REG_CAPACITANCE_FUNC);
+
+  ctx->tprev = ctx->temperature;
+  ctx->temperature = seesaw_read_16(
+      i2c0, ADAFRUIT_SENSOR_ADDR, REG_STATUS_BASE, REG_STATUS_TEMP_FUNC);
+
 }

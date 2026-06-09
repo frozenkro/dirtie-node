@@ -1,27 +1,30 @@
 #include "connect.h"
+#include "dt_err.h"
 #include "lwip/apps/mqtt.h"
-#include "lwip/apps/mqtt_priv.h"
 #include "lwip/ip4_addr.h"
 #include "lwip/ip_addr.h"
 #include "pico/cyw43_arch.h"
-#include "pico/stdio.h"
 #include "pico/time.h"
 #include "pico/types.h"
+#include <cyw43.h>
+#include <cyw43_ll.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "state/state.h"
 
-#define BUF_SIZE 2048
+char TOPIC_BREADCRUMB[] = "dirtie-breadcrumb";
+char TOPIC_PROVISION[] = "dirtie-provision";
 
 int (*DEBUG_CHECK_CANCEL_CB)();
 
-typedef struct MQTT_CLIENT_T_ {
+struct MQTT_CLIENT_T_ {
   ip_addr_t remote_addr;
   mqtt_client_t *mqtt_client;
   u32_t received;
   u32_t counter;
   u32_t reconnect;
-} MQTT_CLIENT_T;
+};
 
 err_t mqtt_test_connect(MQTT_CLIENT_T *state);
 
@@ -89,9 +92,9 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg,
 }
 
 err_t mqtt_test_publish(MQTT_CLIENT_T *state) {
-  char buffer[128];
+  char testbuf[128];
 
-  sprintf(buffer, "{\"message\":\"test dirtie node %d / %d \"}",
+  sprintf(testbuf, "{\"message\":\"test dirtie node %d / %d \"}",
           state->received, state->counter);
 
   err_t err;
@@ -100,7 +103,7 @@ err_t mqtt_test_publish(MQTT_CLIENT_T *state) {
   u8_t retain = 0;
 
   cyw43_arch_lwip_begin();
-  err = mqtt_publish(state->mqtt_client, "pico_w/test", buffer, strlen(buffer),
+  err = mqtt_publish(state->mqtt_client, "pico_w/test", testbuf, strlen(testbuf),
                      qos, retain, mqtt_pub_request_cb, state);
 
   cyw43_arch_lwip_end();
@@ -110,6 +113,39 @@ err_t mqtt_test_publish(MQTT_CLIENT_T *state) {
   }
 
   return err;
+}
+
+
+DT_ERR_E mqtt_connect(MQTT_CLIENT_T *state) {
+  struct mqtt_connect_client_info_t ci;
+  err_t lwip_err;
+
+  memset(&ci, 0, sizeof(ci));
+
+  uint8_t mac[6];
+  cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, mac);
+  ci.client_id = mac;
+  ci.client_user = NULL;
+  ci.client_pass = NULL;
+  ci.keep_alive = 0;
+  ci.will_topic = NULL;
+  ci.will_msg = NULL;
+  ci.will_retain = 0;
+  ci.will_qos = 0;
+
+  // Skipping TLS for now
+
+  const struct mqtt_connect_client_info_t *client_info = &ci;
+
+  lwip_err = mqtt_client_connect(state->mqtt_client, &(state->remote_addr),
+                            MQTT_PORT, mqtt_connection_cb, state, client_info);
+
+  if (lwip_err != ERR_OK) {
+    printf("mqtt_connect error %d\n", lwip_err);
+    return DT_ERR_LWIPERR;
+  }
+
+  return DT_ERR_OK;
 }
 
 err_t mqtt_test_connect(MQTT_CLIENT_T *state) {
@@ -126,9 +162,6 @@ err_t mqtt_test_connect(MQTT_CLIENT_T *state) {
   ci.will_msg = NULL;
   ci.will_retain = 0;
   ci.will_qos = 0;
-
-  // Skipping TLS for initial test btw
-  //
 
   const struct mqtt_connect_client_info_t *client_info = &ci;
 
@@ -149,7 +182,7 @@ int mqtt_run_test(MQTT_CLIENT_T *state) {
   state->counter = 0;
 
   if (state->mqtt_client == NULL) {
-    printf("Failed to create MQTT client");
+    printf("Failed to create MQTT client\n");
     return 1;
   }
 
@@ -216,19 +249,138 @@ int mqtt_test(APP_CTX_T *ctx, int (*check_cancel_cb)()) {
   // assign ip to state based on string
   int succ = ip4addr_aton(ctx->hub_loc, &state->remote_addr);
   if (!succ) {
-    printf("Invalid IP String %s, exiting", ctx->hub_loc);
+    printf("Invalid IP String %s, exiting\n", ctx->hub_loc);
     return 1;
   }
 
   if (mqtt_run_test(state)) {
-    printf("MQTT Test Failed, exiting");
+    printf("MQTT Test Failed, exiting\n");
     return 1;
   }
 
   return 0;
 }
 
-int mqtt_init(APP_CTX_T *ctx) {
-  // TODO
-  return 0;
+DT_ERR_E publish(MQTT_CLIENT_T *state, char *topic, char *message) {
+  char msgbuf[128];
+  strcpy(msgbuf, message);
+
+  err_t lwip_err;
+  u8_t qos =
+      0; /* 0 1 or 2, see MQTT spec */
+  u8_t retain = 0;
+
+  cyw43_arch_lwip_begin();
+  lwip_err = mqtt_publish(state->mqtt_client, topic, msgbuf, strlen(msgbuf),
+                     qos, retain, mqtt_pub_request_cb, state);
+
+  cyw43_arch_lwip_end();
+
+  if (lwip_err != ERR_OK) {
+    printf("Publish err: %d\n", lwip_err);
+    return DT_ERR_LWIPERR;
+  }
+
+  return DT_ERR_OK;
+}
+
+DT_ERR_E provision(APP_CTX_T *ctx) {
+  // create json payload
+  // {"macAddr":"...","contract":"..."}
+
+  uint8_t mac[6];
+  cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, mac);
+
+  char *payload = malloc(45 + strlen(ctx->prv_token) + 1);
+  if (payload == NULL) {
+    return DT_ERR_MALLOC;
+  }
+
+  snprintf(payload, 45 + strlen(ctx->prv_token), "{\"macAddr\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"contract\":\"%s\"}",
+      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], ctx->prv_token);
+
+  DT_ERR_E err = publish(ctx->mqtt_client, TOPIC_PROVISION, payload);
+  return err;
+}
+
+DT_ERR_E breadcrumb(APP_CTX_T *ctx) {
+
+  uint8_t mac[6];
+  cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, mac);
+
+  const char *template = "{\"macAddr\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"capacitance\":\"%d\",\"temperature\":\"%d\"}";
+  int len = snprintf(NULL, 0, template, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], ctx->capacitance, ctx->temperature);
+  char *payload = malloc(len);
+  if (payload == NULL) {
+    return DT_ERR_MALLOC;
+  }
+  snprintf(payload, len, template, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], ctx->capacitance, ctx->temperature);
+
+  DT_ERR_E err = publish(ctx->mqtt_client, TOPIC_BREADCRUMB, payload);
+  return err;
+}
+
+DT_ERR_E mqtt_init_handler(APP_CTX_T *ctx) {
+  if (!ctx->wifi_configd) {
+    printf("wifi credentials not yet configured\n");
+    return 1;
+  }
+
+  // put in station mode because we are making connections from device
+  cyw43_arch_enable_sta_mode();
+
+  printf("connecting to %s\n", ctx->wifi_ssid);
+  if (cyw43_arch_wifi_connect_timeout_ms(ctx->wifi_ssid, ctx->wifi_pass,
+                                         CYW43_AUTH_WPA2_AES_PSK, 30000)) {
+    printf("failed to connect.\n");
+    return 1;
+  } else {
+    printf("Connected.\n");
+  }
+
+  MQTT_CLIENT_T *state = mqtt_client_init();
+  ctx->mqtt_client = state;
+
+  // assign ip to state based on string
+  int succ = ip4addr_aton(ctx->hub_loc, &state->remote_addr);
+  if (!succ) {
+    printf("Invalid IP String %s, exiting\n", ctx->hub_loc);
+    return 1;
+  }
+
+  // Create lwip mqtt client
+  state->mqtt_client = mqtt_client_new();
+  state->counter = 0;
+
+  if (state->mqtt_client == NULL) {
+    printf("Failed to create MQTT client\n");
+    return 1;
+  }
+
+  if (mqtt_connect(state) == ERR_OK) {
+    absolute_time_t timeout = nil_time;
+    int subscribed = 0;
+    mqtt_set_inpub_callback(state->mqtt_client, mqtt_pub_start_cb,
+                            mqtt_pub_data_cb, 0);
+  }
+
+  if (*ctx->prv_token != '\0') {
+    DT_ERR_E err = provision(ctx);
+    if (err != DT_ERR_OK) {
+      printf("Failed to provision device\n");
+      return err;
+    }
+  }
+  ctx->mqtt_initd = true;
+
+  return DT_ERR_OK;
+}
+
+DT_ERR_E mqtt_publish_handler(APP_CTX_T *ctx) {
+  return breadcrumb(ctx);
+}
+
+DT_ERR_E mqtt_listen_handler(APP_CTX_T *ctx) {
+  // Not listening for any topics for now
+  return DT_ERR_OK;
 }

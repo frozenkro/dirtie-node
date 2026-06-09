@@ -10,12 +10,12 @@
 
 
 // key1=val1,key2=val2,(etc..)\0
-flashmem_err_t initialize_flash(bool force_clear) {
+DT_ERR_E initialize_flash(bool force_clear) {
   if (!force_clear) {
     uint8_t *buf = (uint8_t *)ADDR_PERSISTENT_BASE;
     for (size_t i = 0; i < NVS_SIZE; i++) {
       if (buf[i] != 0xFF) {
-        return FM_ERR_OK;
+        return DT_ERR_OK;
       }
     }
   }
@@ -23,7 +23,7 @@ flashmem_err_t initialize_flash(bool force_clear) {
 
   uint8_t *zero_buf = malloc(NVS_SIZE);
   if (zero_buf == NULL) {
-    return FM_ERR_MALLOC;
+    return DT_ERR_MALLOC;
   }
   memset(zero_buf, 0, NVS_SIZE);
 
@@ -33,7 +33,7 @@ flashmem_err_t initialize_flash(bool force_clear) {
   //END Critical Section
 
   free(zero_buf);
-  return FM_ERR_OK;
+  return DT_ERR_OK;
 }
 
 char* esc_chars(const char* val) {
@@ -79,12 +79,12 @@ char* get_next_item(char *ptr) {
   return NULL;
 }
 
-flashmem_err_t splice(char* buf, char* start, char* end, char* replace) {
+DT_ERR_E splice(char* buf, char* start, char* end, char* replace) {
   int start_sz = start - buf;
   int end_sz = strlen(end);
 
   if (strlen(buf) + (start_sz - end_sz) + strlen(replace) > NVS_SIZE) {
-    return FM_ERR_FLASHMEMSIZE;
+    return DT_ERR_FLASHMEMSIZE;
   }
 
   char* chunk_pre = malloc(start - buf);
@@ -101,12 +101,12 @@ flashmem_err_t splice(char* buf, char* start, char* end, char* replace) {
   free(chunk_pre);
   free(chunk_post);
 
-  return FM_ERR_OK;
+  return DT_ERR_OK;
 }
 
-flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
+DT_ERR_E upsert_key(const char* key, const char* val, char* buf) {
   if (strchr(key, '\\') != NULL || strchr(key, ',') != NULL || strchr(key, '=') != NULL) {
-    return FM_ERR_INVALIDKEY;
+    return DT_ERR_INVALIDKEY;
   }
   initialize_flash(false);
 
@@ -128,7 +128,7 @@ flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
   // if key not present, just append
   if (key_loc == NULL) {
     if (strlen(key_search) + strlen(clean_val) + strlen(buf) + 1 > NVS_SIZE - 1) {
-      return FM_ERR_FLASHMEMSIZE;
+      return DT_ERR_FLASHMEMSIZE;
     }
 
     char *end = strchr(buf, '\0');
@@ -146,19 +146,19 @@ flashmem_err_t upsert_key(const char* key, const char* val, char* buf) {
 
   free(clean_val);
   free(key_search);
-  return FM_ERR_OK;
+  return DT_ERR_OK;
 }
 
-flashmem_err_t write(const char* key, const char* val) {
+DT_ERR_E write(const char* key, const char* val) {
   if (strlen(val) > MAX_VAL_SIZE) {
-    return FM_ERR_VALSIZE;
+    return DT_ERR_VALSIZE;
   }
 
   uint8_t *buf = malloc(NVS_SIZE);
   memcpy(buf, ADDR_PERSISTENT, NVS_SIZE);
 
-  flashmem_err_t err = upsert_key(key, val, (char*)buf);
-  if (err != FM_ERR_OK) {
+  DT_ERR_E err = upsert_key(key, val, (char*)buf);
+  if (err != DT_ERR_OK) {
     return err;
   }
 
@@ -171,10 +171,10 @@ flashmem_err_t write(const char* key, const char* val) {
   //END Critical Section
 
   free(buf);
-  return FM_ERR_OK;
+  return DT_ERR_OK;
 }
 
-flashmem_err_t get_val_end(char* val, char** val_end) {
+DT_ERR_E get_val_end(char* val, char** val_end) {
   *val_end = NULL;
   
   for (int i = 0; i < strlen(val); i++) {
@@ -191,14 +191,14 @@ flashmem_err_t get_val_end(char* val, char** val_end) {
     *val_end = strchr(val, '\0');
   }
   if (*val_end == NULL) {
-    return FM_ERR_CORRUPT;
+    return DT_ERR_CORRUPT;
   }
-  return FM_ERR_OK;
+  return DT_ERR_OK;
 }
 
-flashmem_err_t read(const char* key, char* out_val) {
+DT_ERR_E read(const char* key, char* out_val) {
   if (strchr(key, '\\') != NULL || strchr(key, ',') != NULL || strchr(key, '=') != NULL) {
-    return FM_ERR_INVALIDKEY;
+    return DT_ERR_INVALIDKEY;
   }
 
   int keylen = strlen(key);
@@ -210,18 +210,18 @@ flashmem_err_t read(const char* key, char* out_val) {
   char* key_loc = strstr((char*)ADDR_PERSISTENT, key_search);
   if (key_loc == NULL) {
     free(key_search);
-    return FMERR_KEYNOTFOUND;
+    return DT_ERR_KEYNOTFOUND;
   }
 
   char* ass = strchr(key_loc, '=');
   if (ass == NULL) {
-    return FM_ERR_CORRUPT;
+    return DT_ERR_CORRUPT;
   }
 
   char* val = ass + 1;
   char* val_end;
-  flashmem_err_t err = get_val_end(val, &val_end);
-  if (err != FM_ERR_OK) {
+  DT_ERR_E err = get_val_end(val, &val_end);
+  if (err != DT_ERR_OK) {
     return err;
   }
 
@@ -239,6 +239,45 @@ flashmem_err_t read(const char* key, char* out_val) {
   }
 
   free(key_search);
-  return FM_ERR_OK;
+  return DT_ERR_OK;
+}
+
+DT_ERR_E flash_init_handler(APP_CTX_T *ctx) {
+  DT_ERR_E err = initialize_flash(false);
+  if (err != DT_ERR_OK) { return err; }
+
+  err = read("ssid", ctx->wifi_ssid);
+  if (err == DT_ERR_KEYNOTFOUND) { 
+    // WIFI not yet configured
+    return DT_ERR_OK;
+  } else if (err != DT_ERR_OK) {
+    return err;
+  }
+
+  err = read("password", ctx->wifi_pass);
+  if (err != DT_ERR_OK) {
+    return err;
+  }
+
+  // SSID and password restored from flash
+  ctx->wifi_configd = true;
+
+  return DT_ERR_OK;
+}
+
+DT_ERR_E flash_write_handler(APP_CTX_T *ctx) {
+  DT_ERR_E err = write("ssid", ctx->wifi_ssid);
+  if (err != DT_ERR_OK) {
+    return err;
+  }
+
+  err = write("password", ctx->wifi_pass);
+  if (err != DT_ERR_OK) {
+    return err;
+  }
+
+  ctx->wifi_configd = true;
+
+  return DT_ERR_OK;
 }
 
