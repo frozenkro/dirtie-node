@@ -249,6 +249,7 @@ DT_ERR_E flash_init_handler(APP_CTX_T *ctx) {
   err = read("ssid", ctx->wifi_ssid);
   if (err == DT_ERR_KEYNOTFOUND) { 
     // WIFI not yet configured
+    ctx->flash_initd = true;
     return DT_ERR_OK;
   } else if (err != DT_ERR_OK) {
     return err;
@@ -261,6 +262,7 @@ DT_ERR_E flash_init_handler(APP_CTX_T *ctx) {
 
   // SSID and password restored from flash
   ctx->wifi_configd = true;
+  ctx->flash_initd = true;
 
   return DT_ERR_OK;
 }

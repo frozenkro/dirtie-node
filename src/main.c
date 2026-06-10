@@ -19,7 +19,9 @@ const int32_t SAMPLE_RATE = 5000; // 5 seconds
 
 bool sample_rate_update(struct repeating_timer *t) {
   APP_CTX_T *ctx = t->user_data;
-  ctx->set_publish = 1;
+  if (ctx->mqtt_initd) {
+    ctx->set_publish = 1;
+  }
 
   return true;
 }
@@ -36,6 +38,9 @@ DT_ERR_E batt_listen_handler(APP_CTX_T *_) {
 
 
 int main() {
+  // For debugging so sleep doesn't hang 
+  timer_hw->dbgpause = 0;
+
   stdio_init_all();
 
   if (cyw43_arch_init_with_country(CYW43_COUNTRY_USA)) {
@@ -44,7 +49,7 @@ int main() {
   }
   printf("CYW43 Initialized\n");
 
-  APP_CTX_T *ctx = malloc(sizeof(APP_CTX_T));
+  APP_CTX_T *ctx = calloc(sizeof(APP_CTX_T), 1);
   strcpy(ctx->hub_loc, HUB_LOC);
 
   // Regular publish interval

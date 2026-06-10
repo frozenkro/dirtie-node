@@ -15,6 +15,7 @@ add_library(lib_${PROJECT_NAME}
   src/access_point/dhcpserver.c
   src/access_point/host.c
   src/flashmem/flashmem.c
+  src/state/state.c
 )
 
 add_executable(${PROJECT_NAME}

@@ -1,6 +1,7 @@
 #include "sensor.h"
 #include "hardware/i2c.h"
 #include "pico/time.h"
+#include "pico/stdlib.h"
 #include <stdint.h>
 #include <stdio.h>
 

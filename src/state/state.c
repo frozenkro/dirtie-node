@@ -36,41 +36,52 @@ void update_state(APP_CTX_T *ctx) {
         ctx->loop_state = WIFI_CONFIG;
       }
     }
+    break;
+
   case WIFI_CONFIG:
     if (ctx->wifi_configd) {
       ctx->loop_state = FLASH_WRITE;
     }
     break;
+    
   case FLASH_WRITE:
     if (ctx->flash_written) {
       ctx->loop_state = MQTT_INIT;
     }
     break;
+
   case MQTT_INIT:
     if (ctx->mqtt_initd) {
       ctx->loop_state = SENSE_INIT;
     }
     break;
+
   case SENSE_INIT:
     if (ctx->sense_initd) {
       ctx->loop_state = MQTT_PUBLISH;
     }
     break;
+
   case MQTT_PUBLISH:
     ctx->loop_state = MQTT_LISTEN;
     break;
+
   case MQTT_LISTEN:
     ctx->loop_state = BATT_LISTEN;
     break;
+
   case BATT_LISTEN:
     ctx->loop_state = SENSE_LISTEN;
     break;
+
   case SENSE_LISTEN:
     ctx->loop_state = THROTTLE;
     break;
+
   case THROTTLE:
     ctx->loop_state = MQTT_LISTEN;
     break;
+
   case LOOP_STATE_COUNT:
   default:
     printf("Invalid state: %d\n", ctx->loop_state);
