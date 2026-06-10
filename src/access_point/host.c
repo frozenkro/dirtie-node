@@ -274,7 +274,7 @@ DT_ERR_E host_provisioning_ap(APP_CTX_T *ctx) {
     dhcp_server_t dhcp_server;
     dhcp_server_init(&dhcp_server, &state->gw, &mask);
 
-    if (!tcp_server_open(state, ap_name)) {
+    if (tcp_server_open(state, ap_name)) {
         printf("failed to open server\n");
         return DT_ERR_OPENSERVER;
     }
