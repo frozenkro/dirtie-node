@@ -1,4 +1,5 @@
-#error TODO persist contract to flash and use in all communication with dirtie-srv
+#error TODO persist contract to flash, use in all communication with dirtie-srv
+#error TODO fix failure to return http provision request to client app properly
 
 #include "connect/connect.h"
 #include "hardware/gpio.h"
