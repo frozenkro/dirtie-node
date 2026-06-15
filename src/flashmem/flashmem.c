@@ -7,7 +7,20 @@
 #include <time.h>
 #include "hardware/flash.h"
 #include "flashmem.h"
+#include "pico/flash.h"
 
+typedef struct {
+  uint32_t flash_offs;
+  const uint8_t *data;
+  size_t erase_count;
+  size_t prog_count;
+} flash_op_ctx_t;
+
+static void do_flash_erase_program(void *param) {
+  flash_op_ctx_t *ctx = (flash_op_ctx_t *)param;
+  flash_range_erase(ctx->flash_offs, ctx->erase_count);
+  flash_range_program(ctx->flash_offs, ctx->data, ctx->prog_count);
+}
 
 // key1=val1,key2=val2,(etc..)\0
 DT_ERR_E initialize_flash(bool force_clear) {
@@ -27,10 +40,14 @@ DT_ERR_E initialize_flash(bool force_clear) {
   }
   memset(zero_buf, 0, NVS_SIZE);
 
-  //START Critical Section
-  flash_range_erase((uint32_t)ADDR_PERSISTENT_BASE - XIP_BASE, NVS_SIZE);
-  flash_range_program((uint32_t)ADDR_PERSISTENT_BASE - XIP_BASE, zero_buf, NVS_SIZE);
-  //END Critical Section
+  flash_safe_execute_core_init();
+  flash_op_ctx_t op = {
+    .flash_offs = (uint32_t)ADDR_PERSISTENT_BASE - XIP_BASE,
+    .data = zero_buf,
+    .erase_count = NVS_SIZE,
+    .prog_count = NVS_SIZE
+  };
+  flash_safe_execute(do_flash_erase_program, &op, UINT32_MAX);
 
   free(zero_buf);
   return DT_ERR_OK;
@@ -163,12 +180,15 @@ DT_ERR_E write(const char* key, const char* val) {
   }
 
   unsigned int mem_size = strlen((char*)buf);
-  int write_size = (mem_size / 256) + (256 - (mem_size % 256));
+  size_t write_size = (mem_size % 256) ? ((mem_size / 256) + 1) * 256 : mem_size;
 
-  //START Critical Section
-  flash_range_erase((uint32_t)ADDR_PERSISTENT_BASE - XIP_BASE, NVS_SIZE);
-  flash_range_program((uint32_t)ADDR_PERSISTENT_BASE - XIP_BASE, buf, write_size);
-  //END Critical Section
+  flash_op_ctx_t op = {
+    .flash_offs = (uint32_t)ADDR_PERSISTENT_BASE - XIP_BASE,
+    .data = buf,
+    .erase_count = NVS_SIZE, 
+    .prog_count = write_size
+  };
+  flash_safe_execute(do_flash_erase_program, &op, UINT32_MAX);
 
   free(buf);
   return DT_ERR_OK;
@@ -263,6 +283,7 @@ DT_ERR_E flash_init_handler(APP_CTX_T *ctx) {
   // SSID and password restored from flash
   ctx->wifi_configd = true;
   ctx->flash_initd = true;
+  ctx->flash_written = true;
 
   return DT_ERR_OK;
 }
@@ -278,7 +299,7 @@ DT_ERR_E flash_write_handler(APP_CTX_T *ctx) {
     return err;
   }
 
-  ctx->wifi_configd = true;
+  ctx->flash_written = true;
 
   return DT_ERR_OK;
 }

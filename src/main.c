@@ -13,7 +13,7 @@
 #endif
 
 // Set in cmakelists
-const char* HUB_LOC;
+// const char* HUB_LOC;
 
 const int32_t SAMPLE_RATE = 5000; // 5 seconds
 
@@ -49,6 +49,7 @@ int main() {
   }
   printf("CYW43 Initialized\n");
 
+  printf("HUB_LOC set to %s\n", HUB_LOC);
   APP_CTX_T *ctx = calloc(sizeof(APP_CTX_T), 1);
   strcpy(ctx->hub_loc, HUB_LOC);
 

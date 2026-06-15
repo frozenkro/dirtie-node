@@ -23,6 +23,9 @@ static const uint8_t REG_BME280 = 0x76;
 static const uint SDA_PIN = 4;
 static const uint SCL_PIN = 5;
 
+// 100 khz per adafruit seesaw recommendation
+static const uint BAUDRATE = 100 * 1000;
+
 i2c_inst_t *i2c;
 
 int seesaw_reg_read(i2c_inst_t *i2c, const uint addr, const uint8_t baseReg,
@@ -61,7 +64,6 @@ int sensor_test() {
   // ports
   i2c = i2c0;
 
-  // init I2C port @ 100 khz per adafruit seesaw recommendation
   i2c_init(i2c0, 100 * 1000);
 
   gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);
@@ -81,11 +83,9 @@ int sensor_test() {
 }
 
 DT_ERR_E sensor_init() {
-  i2c = i2c0;
-  
-  // init I2C port @ 100 khz per adafruit seesaw recommendation
-  if (i2c_init(i2c0, 100 * 1000)) {
-    return DT_ERR_I2CINIT;
+  uint act_baudrate = i2c_init(i2c0, BAUDRATE);
+  if (act_baudrate != BAUDRATE) {
+    return printf("WARN: actual baud rate '%d' not equal to configured baud rate '%d'\n", act_baudrate, BAUDRATE);
   }
 
   gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);

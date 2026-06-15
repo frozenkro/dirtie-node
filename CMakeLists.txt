@@ -42,6 +42,7 @@ target_link_libraries(lib_${PROJECT_NAME}
   pico_lwip_mqtt
   hardware_flash
   hardware_i2c
+  pico_flash
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -88,16 +89,18 @@ pico_enable_stdio_uart(${PROJECT_NAME} 1)
 # target_compile_definitions(${PROJECT_NAME} PRIVATE "TEST_MODE=${TEST_MODE}")
 
 # hard code to location of hub. If hosted publicly someday put domain here
-set(HUB_LOC "192.168.0.114")
+set(HUB_LOC_DEFAULT "192.168.0.114")
 
 if (DEFINED ENV{MQTT_BROKER_IP} AND (NOT MQTT_BROKER_IP))
   set (MQTT_BROKER_IP $ENV{MQTT_BROKER_IP})
   message("Using MQTT_BROKER_IP from environment ('${MQTT_BROKER_IP}')")
 endif()
-if (MQTT_BROKER_IP)
-  target_compile_definitions(${PROJECT_NAME} PRIVATE "MQTT_BROKER_IP=\"${MQTT_BROKER_IP}\"")
-  target_compile_definitions(test_${PROJECT_NAME} PRIVATE "MQTT_BROKER_IP=\"${MQTT_BROKER_IP}\"")
+if (HUB_LOC)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE HUB_LOC="${HUB_LOC}")
+  target_compile_definitions(test_${PROJECT_NAME} PRIVATE HUB_LOC="${HUB_LOC}")
 else()
+  target_compile_definitions(${PROJECT_NAME} PRIVATE HUB_LOC="${HUB_LOC_DEFAULT}")
+  target_compile_definitions(test_${PROJECT_NAME} PRIVATE HUB_LOC="${HUB_LOC_DEFAULT}")
   message(WARNING 
     "MQTT_BROKER_IP NOT SPECIFIED.\n"
     "This will prevent the device from publishing any data\n"

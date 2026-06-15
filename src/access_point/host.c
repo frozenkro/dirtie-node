@@ -30,12 +30,12 @@ typedef struct TCP_SERVER_T_ {
 typedef struct TCP_CONNECT_STATE_T_ {
     struct tcp_pcb *pcb;
     int sent_len;
-    char headers[128];
+    char headers[4096];
     char result[256];
     int header_len;
     int result_len;
     ip_addr_t *gw;
-    APP_CTX_T *ctx
+    APP_CTX_T *ctx;
 } TCP_CONNECT_STATE_T;
 
 static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct tcp_pcb *client_pcb, err_t close_err) {
@@ -139,7 +139,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
                                          
             if (strncmp(path, WIFI_CREDENTIALS_ENDPOINT, sizeof(WIFI_CREDENTIALS_ENDPOINT) - 1) == 0) {
               // get the request body (json) start point - after two line breaks
-              char *json_start = strstr(con_state->headers, "\r\n\r\n");
+              char *json_start = strstr((char *)p->payload, "\r\n\r\n");
               if (json_start) {
                   //skip rnrn
                   json_start += 4;
@@ -263,16 +263,16 @@ DT_ERR_E host_provisioning_ap(APP_CTX_T *ctx) {
 
     state->ctx = ctx;
 
-    const char *ap_name = "dirtie";
-    const char *password = NULL;
+    const char *ap_name = "Dirtie-Setup";
+    const char *password = "letsgetdirtie";
     cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
 
     ip4_addr_t mask;
     IP4_ADDR(ip_2_ip4(&state->gw), 192, 168, 4, 1);
-    IP4_ADDR(ip_2_ip4(&mask), 255, 255, 255, 2);
+    IP4_ADDR(ip_2_ip4(&mask), 255, 255, 255, 0);
 
-    dhcp_server_t dhcp_server;
-    dhcp_server_init(&dhcp_server, &state->gw, &mask);
+    dhcp_server_t *dhcp_server = calloc(sizeof(dhcp_server_t), 1);
+    dhcp_server_init(dhcp_server, &state->gw, &mask);
 
     if (tcp_server_open(state, ap_name)) {
         printf("failed to open server\n");
