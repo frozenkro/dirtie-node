@@ -1,3 +1,5 @@
+#error TODO persist contract to flash and use in all communication with dirtie-srv
+
 #include "connect/connect.h"
 #include "hardware/gpio.h"
 #include "pico/cyw43_arch.h"
