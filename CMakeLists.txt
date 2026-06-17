@@ -16,6 +16,10 @@ add_library(lib_${PROJECT_NAME}
   src/access_point/host.c
   src/flashmem/flashmem.c
   src/state/state.c
+  src/basicio/basicio.c
+  src/b64/b64.c
+  src/util/util.c
+  src/logger/logger.c
 )
 
 add_executable(${PROJECT_NAME}

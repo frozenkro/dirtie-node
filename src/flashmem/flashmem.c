@@ -280,6 +280,11 @@ DT_ERR_E flash_init_handler(APP_CTX_T *ctx) {
     return err;
   }
 
+  err = read("contract", ctx->prv_token);
+  if (err != DT_ERR_OK) {
+    return err;
+  }
+
   // SSID and password restored from flash
   ctx->wifi_configd = true;
   ctx->flash_initd = true;
@@ -295,6 +300,11 @@ DT_ERR_E flash_write_handler(APP_CTX_T *ctx) {
   }
 
   err = write("password", ctx->wifi_pass);
+  if (err != DT_ERR_OK) {
+    return err;
+  }
+
+  err = write("contract", ctx->prv_token);
   if (err != DT_ERR_OK) {
     return err;
   }

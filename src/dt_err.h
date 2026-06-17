@@ -13,6 +13,8 @@ typedef enum {
   DT_ERR_LWIPERR = 8,
   DT_ERR_OPENSERVER = 9,
   DT_ERR_I2CINIT = 10,
+  DT_ERR_2MANYLOGS = 11,
+  DT_ERR_OFFLINE = 12,
 } DT_ERR_E;
 
 #endif

@@ -12,8 +12,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include "state/state.h"
+#include "logger/logger.h"
+#include "util/util.h"
 
 char TOPIC_BREADCRUMB[] = "dirtie-breadcrumb";
+char TOPIC_LOGDUMP[] = "dirtie-logdump";
 char TOPIC_PROVISION[] = "dirtie-provision";
 
 int (*DEBUG_CHECK_CANCEL_CB)();
@@ -228,20 +231,20 @@ int mqtt_run_test(MQTT_CLIENT_T *state) {
 int mqtt_test(APP_CTX_T *ctx, int (*check_cancel_cb)()) {
   // put in station mode because we are making connections from device
   if (!ctx->wifi_configd) {
-    printf("wifi credentials not yet configured\n");
+    dlog(ctx, LOG_INFO, "wifi credentials not yet configured\n");
     return 1;
   }
   DEBUG_CHECK_CANCEL_CB = check_cancel_cb;
 
   cyw43_arch_enable_sta_mode();
 
-  printf("connecting to %s\n", ctx->wifi_ssid);
+  dlog(ctx, LOG_INFO, "connecting to %s\n", ctx->wifi_ssid);
   if (cyw43_arch_wifi_connect_timeout_ms(ctx->wifi_ssid, ctx->wifi_pass,
                                          CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-    printf("failed to connect.\n");
+    dlog(ctx, LOG_INFO, "failed to connect.\n");
     return 1;
   } else {
-    printf("Connected.\n");
+    dlog(ctx, LOG_INFO, "Connected.\n");
   }
 
   MQTT_CLIENT_T *state = mqtt_client_init();
@@ -249,12 +252,12 @@ int mqtt_test(APP_CTX_T *ctx, int (*check_cancel_cb)()) {
   // assign ip to state based on string
   int succ = ip4addr_aton(ctx->hub_loc, &state->remote_addr);
   if (!succ) {
-    printf("Invalid IP String %s, exiting\n", ctx->hub_loc);
+    dlog(ctx, LOG_INFO, "Invalid IP String %s, exiting\n", ctx->hub_loc);
     return 1;
   }
 
   if (mqtt_run_test(state)) {
-    printf("MQTT Test Failed, exiting\n");
+    dlog(ctx, LOG_INFO, "MQTT Test Failed, exiting\n");
     return 1;
   }
 
@@ -308,34 +311,103 @@ DT_ERR_E breadcrumb(APP_CTX_T *ctx) {
   uint8_t mac[6];
   cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, mac);
 
-  const char *template = "{\"macAddr\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"capacitance\":\"%d\",\"temperature\":\"%d\"}";
-  int len = snprintf(NULL, 0, template, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], ctx->capacitance, ctx->temperature);
+  const char *template = "{\"macAddr\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"contract\":\"%s\",\"capacitance\":\"%d\",\"temperature\":\"%d\"}";
+
+  int len = snprintf(NULL,
+    0,
+    template,
+    mac[0],
+    mac[1],
+    mac[2],
+    mac[3],
+    mac[4],
+    mac[5],
+    ctx->prv_token,
+    ctx->capacitance,
+    ctx->temperature);
   char *payload = malloc(len);
   if (payload == NULL) {
     return DT_ERR_MALLOC;
   }
+
   snprintf(payload, len, template, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], ctx->capacitance, ctx->temperature);
 
   DT_ERR_E err = publish(ctx->mqtt_client, TOPIC_BREADCRUMB, payload);
   return err;
 }
 
+DT_ERR_E logdump(APP_CTX_T *ctx) {
+  uint8_t mac[6];
+  cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, mac);
+
+
+  uint64_t now;
+  DT_ERR_E err_epoch = get_current_epoch(ctx, &now);
+  if (err_epoch != DT_ERR_OK) {
+    return err_epoch;
+  }
+
+  uint64_t hwnow = to_ms_since_boot(get_absolute_time());
+
+  int logdumpsize = sizeof(ctx->logdump) / sizeof(char*); // 16
+  char *logarray = calloc(MAX_LOG_LEN, logdumpsize);
+  int pos = 0;
+  pos += snprintf(logarray + pos, sizeof(logarray) - pos, "[");
+  for (int i = 0; i < logdumpsize; i++) {
+    if (ctx->logdump[i] == NULL) break;
+    
+    // Timestamp transform to epoch
+    log_transform_ts(ctx->logdump[i], now, hwnow);
+
+    pos += snprintf(logarray + pos, sizeof(logarray) - pos, 
+        "%s\"%s\"", i > 0 ? "," : "", ctx->logdump[i]);
+  }
+  pos += snprintf(logarray + pos, sizeof(logarray) - pos, "]");
+
+  const char *template = "{\"macAddr\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"contract\":\"%s\",\"logdump\":%d}";
+
+  int len = snprintf(NULL,
+    0,
+    template,
+    mac[0],
+    mac[1],
+    mac[2],
+    mac[3],
+    mac[4],
+    mac[5],
+    ctx->prv_token,
+    logarray);
+
+  char *payload = malloc(len);
+  if (payload == NULL) {
+    return DT_ERR_MALLOC;
+  }
+
+  snprintf(payload, len, template, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], ctx->prv_token, logarray);
+
+  // Immediately free all logs, no longer needed
+  free_logs(ctx);
+
+  DT_ERR_E err = publish(ctx->mqtt_client, TOPIC_LOGDUMP, payload);
+  return err;
+}
+
 DT_ERR_E mqtt_init_handler(APP_CTX_T *ctx) {
   if (!ctx->wifi_configd) {
-    printf("wifi credentials not yet configured\n");
+    dlog(ctx, LOG_INFO, "wifi credentials not yet configured\n");
     return 1;
   }
 
   // put in station mode because we are making connections from device
   cyw43_arch_enable_sta_mode();
 
-  printf("connecting to %s\n", ctx->wifi_ssid);
+  dlog(ctx, LOG_INFO, "connecting to %s\n", ctx->wifi_ssid);
   if (cyw43_arch_wifi_connect_timeout_ms(ctx->wifi_ssid, ctx->wifi_pass,
                                          CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-    printf("failed to connect.\n");
+    dlog(ctx, LOG_INFO, "failed to connect.\n");
     return 1;
   } else {
-    printf("Connected.\n");
+    dlog(ctx, LOG_INFO, "Connected.\n");
   }
 
   MQTT_CLIENT_T *state = mqtt_client_init();
@@ -344,7 +416,7 @@ DT_ERR_E mqtt_init_handler(APP_CTX_T *ctx) {
   // assign ip to state based on string
   int succ = ip4addr_aton(ctx->hub_loc, &state->remote_addr);
   if (!succ) {
-    printf("Invalid IP String %s, exiting\n", ctx->hub_loc);
+    dlog(ctx, LOG_INFO, "Invalid IP String %s, exiting\n", ctx->hub_loc);
     return 1;
   }
 
@@ -353,7 +425,7 @@ DT_ERR_E mqtt_init_handler(APP_CTX_T *ctx) {
   state->counter = 0;
 
   if (state->mqtt_client == NULL) {
-    printf("Failed to create MQTT client\n");
+    dlog(ctx, LOG_INFO, "Failed to create MQTT client\n");
     return 1;
   }
 
@@ -367,7 +439,7 @@ DT_ERR_E mqtt_init_handler(APP_CTX_T *ctx) {
   if (*ctx->prv_token != '\0') {
     DT_ERR_E err = provision(ctx);
     if (err != DT_ERR_OK) {
-      printf("Failed to provision device\n");
+      dlog(ctx, LOG_INFO, "Failed to provision device\n");
       return err;
     }
   }
@@ -378,6 +450,14 @@ DT_ERR_E mqtt_init_handler(APP_CTX_T *ctx) {
 
 DT_ERR_E mqtt_publish_handler(APP_CTX_T *ctx) {
   return breadcrumb(ctx);
+}
+
+DT_ERR_E logdump_handler(APP_CTX_T *ctx) {
+  if (ctx->logdump[0] == NULL) {
+    return DT_ERR_OK;
+  }
+
+  return logdump(ctx);
 }
 
 DT_ERR_E mqtt_listen_handler(APP_CTX_T *ctx) {

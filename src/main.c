@@ -1,5 +1,6 @@
-#error TODO persist contract to flash, use in all communication with dirtie-srv
-#error TODO fix failure to return http provision request to client app properly
+// #error TODO persist contract to flash, use in all communication with dirtie-srv
+// #error TODO fix failure to return http provision request to client app properly
+// #error TODO finish implementing logger.c (logdump lifecycle) and implement on dirtie-srv (send right to grafana?)
 
 #include "connect/connect.h"
 #include "hardware/gpio.h"
@@ -10,6 +11,9 @@
 #include "test.h"
 #include <stdio.h>
 #include "state/state.h"
+#include "basicio/basicio.h"
+#include "logger/logger.h"
+#include "util/util.h"
 
 #ifndef TEST_MODE
 #define TEST_MODE 0
@@ -44,47 +48,38 @@ int main() {
   // For debugging so sleep doesn't hang 
   timer_hw->dbgpause = 0;
 
+  APP_CTX_T *ctx = calloc(sizeof(APP_CTX_T), 1);
+  strcpy(ctx->hub_loc, HUB_LOC);
+  dlog(ctx, LOG_INFO, "HUB_LOC set to %s\n", HUB_LOC);
+
   stdio_init_all();
 
   if (cyw43_arch_init_with_country(CYW43_COUNTRY_USA)) {
-    printf("failed to initialize \n");
+    dlog(ctx, LOG_ERR, "failed to initialize \n");
     return 1;
   }
-  printf("CYW43 Initialized\n");
-
-  printf("HUB_LOC set to %s\n", HUB_LOC);
-  APP_CTX_T *ctx = calloc(sizeof(APP_CTX_T), 1);
-  strcpy(ctx->hub_loc, HUB_LOC);
-
+  dlog(ctx, LOG_INFO, "CYW43 Initialized\n");
+  
   // Regular publish interval
   struct repeating_timer timer;
   add_repeating_timer_ms(SAMPLE_RATE, sample_rate_update, ctx, &timer);
 
+  basicio_init_handler(ctx);
+
   while (1) {
     DT_ERR_E err = LOOP_STATE_CALLBACKS[ctx->loop_state](ctx);
     if (err) {
-      printf("Error: %d\n", err);
+      dlog(ctx, LOG_ERR, "%d\n", err);
     }
 
     update_state(ctx);
-
-    // Check time/timer
-    // Check sensor
-    // // If diff between new reading and last published reading > 50,
-    // // or if last published reading was 1 hour ago
-    // // Add reading to event publish array
 
     // check battery
     // // If low, add reading to event publish array
     // // And turn on battery LED?
 
-    // Handle usb 
-    //
-    // Handle MQTT subscriptions
-
-    // Publish all events from array to MQTT broker
-
-    sleep_ms(1000);
+    // Handle button + LED
+    basicio_init_handler(ctx);
   }
 
   // If ever a graceful shutdown is required
