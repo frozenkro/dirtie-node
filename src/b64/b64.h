@@ -7,6 +7,7 @@
 // Original copyright (c) 2014 Joseph Werle
 // Modified by Kaleb Olson 2026: Modify imports to work in this project, remove unused macros/funcs
 
+#include "dt_err.h"
 #include <stddef.h>
 #ifndef B64_H
 #define B64_H 1
@@ -48,7 +49,6 @@ static const char b64_table[] = {
  * Returns a `char *' base64 encoded string.
  */
 
-char *
-b64_encode (const unsigned char *, size_t);
+DT_ERR_E b64_encode (char*, const unsigned char *, size_t);
 
 #endif

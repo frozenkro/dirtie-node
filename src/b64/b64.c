@@ -9,7 +9,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "b64.h"
+#include "dt_err.h"
 
 int b64_buf_malloc(b64_buffer_t * buf)
 {
@@ -33,8 +35,7 @@ int b64_buf_realloc(b64_buffer_t* buf, size_t size)
 	return 0;
 }
 
-char *
-b64_encode (const unsigned char *src, size_t len) {
+DT_ERR_E b64_encode (char * result, const unsigned char *src, size_t len) {
   int i = 0;
   int j = 0;
   b64_buffer_t encbuf;
@@ -43,7 +44,7 @@ b64_encode (const unsigned char *src, size_t len) {
   unsigned char tmp[3];
 
   // alloc
-  if(b64_buf_malloc(&encbuf) == -1) { return NULL; }
+  if(b64_buf_malloc(&encbuf) == -1) { return DT_ERR_MALLOC; }
 
   // parse until end of source
   while (len--) {
@@ -61,7 +62,7 @@ b64_encode (const unsigned char *src, size_t len) {
       // then translate each encoded buffer
       // part by index from the base 64 index table
       // into `encbuf.ptr' unsigned char array
-      if (b64_buf_realloc(&encbuf, size + 4) == -1) return NULL;
+      if (b64_buf_realloc(&encbuf, size + 4) == -1) return DT_ERR_MALLOC;
 
       for (i = 0; i < 4; ++i) {
         encbuf.ptr[size++] = b64_table[buf[i]];
@@ -87,7 +88,7 @@ b64_encode (const unsigned char *src, size_t len) {
 
     // perform same write to `encbuf->ptr` with new allocation
     for (j = 0; (j < i + 1); ++j) {
-      if (b64_buf_realloc(&encbuf, size + 1) == -1) return NULL;
+      if (b64_buf_realloc(&encbuf, size + 1) == -1) return DT_ERR_MALLOC;
 
       encbuf.ptr[size++] = b64_table[buf[j]];
     }
@@ -95,15 +96,18 @@ b64_encode (const unsigned char *src, size_t len) {
     // while there is still a remainder
     // append `=' to `encbuf.ptr'
     while ((i++ < 3)) {
-      if (b64_buf_realloc(&encbuf, size + 1) == -1) return NULL;
+      if (b64_buf_realloc(&encbuf, size + 1) == -1) return DT_ERR_MALLOC;
 
       encbuf.ptr[size++] = '=';
     }
   }
 
   // Make sure we have enough space to add '\0' character at end.
-  if (b64_buf_realloc(&encbuf, size + 1) == -1) return NULL;
+  if (b64_buf_realloc(&encbuf, size + 1) == -1) return DT_ERR_MALLOC;
   encbuf.ptr[size] = '\0';
 
-  return encbuf.ptr;
+  strcpy(result, encbuf.ptr);
+  free(encbuf.ptr);
+
+  return DT_ERR_OK;
 }
